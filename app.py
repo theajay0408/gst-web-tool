@@ -3,28 +3,23 @@ import pandas as pd
 import json
 import io
 
-st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="🔒", layout="wide")
+st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
 
-# ==================== PASSWORD AUTHENTICATION ====================
-ADMIN_PASSWORD = "Ajay@GST2026"  # <-- यहाँ अपना मनपसंद पासवर्ड सेट कर सकते हैं
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-def check_password():
-    if st.session_state.get("password_input") == ADMIN_PASSWORD:
-        st.session_state.authenticated = True
-    else:
-        st.session_state.authenticated = False
-        st.error("❌ गलत पासवर्ड! कृपया सही पासवर्ड दर्ज करें।")
-
-if not st.session_state.authenticated:
-    st.title("🔒 GST Utility Portal Login")
-    st.markdown("इस टूल का उपयोग करने के लिए कृपया अधिकृत पासवर्ड दर्ज करें।")
-    st.text_input("पासवर्ड दर्ज करें:", type="password", key="password_input", on_change=check_password)
-    st.button("लॉगिन करें", on_click=check_password)
-    st.stop()  # जब तक पासवर्ड सही नहीं होगा, आगे का कोई कोड रन नहीं होगा
-# =================================================================
+# Hide Streamlit Header, GitHub Icon, Fork/Edit Icon, and Footer completely
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    div[data-testid="stDecoration"] {visibility: hidden !important; display: none !important;}
+    div[data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
+    header [data-testid="stHeader"] {display: none !important;}
+    a[href*="github.com"] {display: none !important;}
+    button[title="View source"] {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
 
 # Complete GST State Master Dictionary with Variations
 STATE_MASTER = {
@@ -98,13 +93,7 @@ def clean_state_info(raw_state):
     
     return "00", st_clean.title()
 
-# Top Header with Logout Option
-head_col1, head_col2 = st.columns([6, 1])
-head_col1.title("⚖️ Master E-Commerce GST & Return Processing Utility")
-if head_col2.button("लॉगआउट"):
-    st.session_state.authenticated = False
-    st.rerun()
-
+st.title("⚖️ Master E-Commerce GST & Return Processing Utility")
 st.markdown("Meesho, Flipkart और Amazon के डेटा को प्रोसेस करके **Side-by-Side Pivot Report**, **GSTR-1 CSV/Excel** और **JSON** तैयार करें।")
 
 # UI: Client Details
