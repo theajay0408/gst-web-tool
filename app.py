@@ -5,22 +5,6 @@ import io
 
 st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
 
-# Hide Streamlit Header, GitHub Icon, Fork/Edit Icon, and Footer completely
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    .viewerBadge_container__1QSob {display: none !important;}
-    div[data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
-    div[data-testid="stDecoration"] {visibility: hidden !important; display: none !important;}
-    div[data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
-    header [data-testid="stHeader"] {display: none !important;}
-    a[href*="github.com"] {display: none !important;}
-    button[title="View source"] {display: none !important;}
-    </style>
-""", unsafe_allow_html=True)
-
 # Complete GST State Master Dictionary with Variations
 STATE_MASTER = {
     "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"),
