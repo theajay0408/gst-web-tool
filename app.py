@@ -5,18 +5,54 @@ import io
 
 st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
 
-# State to Code Master Mapping (Including AP 37 & Proper Formatting)
-STATE_CONFIG = {
-    "JAMMU AND KASHMIR": "01", "HIMACHAL PRADESH": "02", "PUNJAB": "03", "CHANDIGARH": "04",
-    "UTTARAKHAND": "05", "HARYANA": "06", "DELHI": "07", "RAJASTHAN": "08",
-    "UTTAR PRADESH": "09", "BIHAR": "10", "SIKKIM": "11", "ARUNACHAL PRADESH": "12",
-    "NAGALAND": "13", "MANIPUR": "14", "MIZORAM": "15", "TRIPURA": "16",
-    "MEGHALAYA": "17", "ASSAM": "18", "WEST BENGAL": "19", "JHARKHAND": "20",
-    "ODISHA": "21", "CHHATTISGARH": "22", "MADHYA PRADESH": "23", "GUJARAT": "24",
-    "DAMAN AND DIU": "25", "DADRA AND NAGAR HAVELI": "26", "MAHARASHTRA": "27",
-    "ANDHRA PRADESH": "37", "KARNATAKA": "29", "GOA": "30", "LAKSHADWEEP": "31",
-    "KERALA": "32", "TAMIL NADU": "33", "PUDUCHERRY": "34", "ANDAMAN AND NICOBAR ISLANDS": "35",
-    "TELANGANA": "36", "LADAKH": "38", "OTHER TERRITORY": "97"
+# Complete GST State Master Dictionary with Variations
+STATE_MASTER = {
+    "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"),
+    "JAMMU & KASHMIR": ("01", "Jammu and Kashmir"),
+    "HIMACHAL PRADESH": ("02", "Himachal Pradesh"),
+    "PUNJAB": ("03", "Punjab"),
+    "CHANDIGARH": ("04", "Chandigarh"),
+    "UTTARAKHAND": ("05", "Uttarakhand"),
+    "UTTRANCHAL": ("05", "Uttarakhand"),
+    "HARYANA": ("06", "Haryana"),
+    "DELHI": ("07", "Delhi"),
+    "RAJASTHAN": ("08", "Rajasthan"),
+    "UTTAR PRADESH": ("09", "Uttar Pradesh"),
+    "BIHAR": ("10", "Bihar"),
+    "SIKKIM": ("11", "Sikkim"),
+    "ARUNACHAL PRADESH": ("12", "Arunachal Pradesh"),
+    "NAGALAND": ("13", "Nagaland"),
+    "MANIPUR": ("14", "Manipur"),
+    "MIZORAM": ("15", "Mizoram"),
+    "TRIPURA": ("16", "Tripura"),
+    "MEGHALAYA": ("17", "Meghalaya"),
+    "ASSAM": ("18", "Assam"),
+    "WEST BENGAL": ("19", "West Bengal"),
+    "JHARKHAND": ("20", "Jharkhand"),
+    "ODISHA": ("21", "Odisha"),
+    "ORISSA": ("21", "Odisha"),
+    "CHHATTISGARH": ("22", "Chhattisgarh"),
+    "CHATTISGARH": ("22", "Chhattisgarh"),
+    "MADHYA PRADESH": ("23", "Madhya Pradesh"),
+    "GUJARAT": ("24", "Gujarat"),
+    "DAMAN AND DIU": ("25", "Daman and Diu"),
+    "DADRA AND NAGAR HAVELI": ("26", "Dadra and Nagar Haveli"),
+    "DADRA & NAGAR HAVELI AND DAMAN & DIU": ("26", "Dadra and Nagar Haveli and Daman and Diu"),
+    "MAHARASHTRA": ("27", "Maharashtra"),
+    "ANDHRA PRADESH": ("37", "Andhra Pradesh"),
+    "ANDHRA PRADESH(NEW)": ("37", "Andhra Pradesh"),
+    "KARNATAKA": ("29", "Karnataka"),
+    "GOA": ("30", "Goa"),
+    "LAKSHADWEEP": ("31", "Lakshadweep"),
+    "KERALA": ("32", "Kerala"),
+    "TAMIL NADU": ("33", "Tamil Nadu"),
+    "PUDUCHERRY": ("34", "Puducherry"),
+    "PONDICHERRY": ("34", "Puducherry"),
+    "ANDAMAN AND NICOBAR ISLANDS": ("35", "Andaman and Nicobar Islands"),
+    "ANDAMAN & NICOBAR": ("35", "Andaman and Nicobar Islands"),
+    "TELANGANA": ("36", "Telangana"),
+    "LADAKH": ("38", "Ladakh"),
+    "OTHER TERRITORY": ("97", "Other Territory")
 }
 
 PLATFORM_GSTIN_MAP = {
@@ -25,16 +61,22 @@ PLATFORM_GSTIN_MAP = {
     "Amazon": "07AAACA6687K1ZT"
 }
 
-def clean_state_name(raw_state):
+def clean_state_info(raw_state):
     st_clean = str(raw_state).upper().strip()
     if "ANDHRA" in st_clean:
         return "37", "Andhra Pradesh"
     if "JAMMU" in st_clean:
         return "01", "Jammu and Kashmir"
+    if "CHATTISGARH" in st_clean or "CHHATTISGARH" in st_clean:
+        return "22", "Chhattisgarh"
+    if "ORISSA" in st_clean or "ODISHA" in st_clean:
+        return "21", "Odisha"
+
+    if st_clean in STATE_MASTER:
+        return STATE_MASTER[st_clean]
     
-    code = STATE_CONFIG.get(st_clean, "00")
-    formatted_name = st_clean.title()
-    return code, formatted_name
+    # Fallback
+    return "00", st_clean.title()
 
 st.title("⚖️ Master E-Commerce GST & Return Processing Utility")
 st.markdown("Meesho, Flipkart और Amazon के डेटा को प्रोसेस करके **Side-by-Side Pivot Report**, **GSTR-1 CSV/Excel** और **JSON** तैयार करें।")
@@ -55,57 +97,50 @@ st.divider()
 st.subheader("📂 Step 1: Upload Platform Reports")
 p_col1, p_col2, p_col3 = st.columns(3)
 
-# 1. Meesho Upload
 with p_col1:
     st.markdown("### 🟠 Meesho")
     m_sales = st.file_uploader("Meesho TCS Sales (Excel/CSV)", type=["xlsx", "xls", "csv"], key="ms")
     m_return = st.file_uploader("Meesho TCS Return (Excel/CSV)", type=["xlsx", "xls", "csv"], key="mr")
 
-# 2. Flipkart Upload
 with p_col2:
     st.markdown("### 🔵 Flipkart")
     fk_file = st.file_uploader("Flipkart GST Report (7A/7B Multi-sheet)", type=["xlsx", "xls"], key="fk")
 
-# 3. Amazon Upload
 with p_col3:
     st.markdown("### 🟡 Amazon")
     az_file = st.file_uploader("Amazon B2C Report (Excel/CSV)", type=["xlsx", "xls", "csv"], key="az")
 
-# Master Records Collector
 processed_rows = []
 
-# --- 1. Process Meesho ---
+# 1. Process Meesho
 if m_sales is not None:
     try:
         ms_df = pd.read_excel(m_sales) if m_sales.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_sales)
         ms_df.columns = ms_df.columns.str.strip().str.lower()
         
-        # Sales Rows
         for _, r in ms_df.iterrows():
-            gross = float(r.get('total_taxable_sale_value', r.get('gross amount', 0)) or 0)
-            rate = float(r.get('gst_rate', r.get('rate', 0)) or 0)
+            gross = float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0)
+            rate = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
             state = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
-            if state and abs(gross) > 0.01:
+            if state and abs(gross) > 0.001:
                 processed_rows.append({"Platform": "Meesho", "Gross": gross, "Return": 0.0, "Rate": rate, "State": state})
 
-        # Return Rows
         if m_return is not None:
             mr_df = pd.read_excel(m_return) if m_return.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_return)
             mr_df.columns = mr_df.columns.str.strip().str.lower()
             for _, r in mr_df.iterrows():
-                ret_val = abs(float(r.get('total_taxable_sale_value', r.get('gross amount', 0)) or 0))
-                rate = float(r.get('gst_rate', r.get('rate', 0)) or 0)
+                ret_val = abs(float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0))
+                rate = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
                 state = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
-                if state and abs(ret_val) > 0.01:
+                if state and abs(ret_val) > 0.001:
                     processed_rows.append({"Platform": "Meesho", "Gross": 0.0, "Return": ret_val, "Rate": rate, "State": state})
     except Exception as e:
         st.error(f"Meesho File Error: {e}")
 
-# --- 2. Process Flipkart ---
+# 2. Process Flipkart
 if fk_file is not None:
     try:
         xl = pd.ExcelFile(fk_file)
-        # Inter-State (7B2)
         sheet_7b = [s for s in xl.sheet_names if "7(B)" in s or "7(B)(2)" in s]
         if sheet_7b:
             df_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0])
@@ -114,10 +149,9 @@ if fk_file is not None:
                 returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0)
                 rate = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0)
                 state = str(r.iloc[8]).strip() if len(r) > 8 else "Delhi"
-                if state and (abs(gross) > 0.01 or abs(returns) > 0.01):
+                if state and (abs(gross) > 0.001 or abs(returns) > 0.001):
                     processed_rows.append({"Platform": "Flipkart", "Gross": gross, "Return": returns, "Rate": rate, "State": state})
 
-        # Intra-State (7A2)
         sheet_7a = [s for s in xl.sheet_names if "7(A)" in s or "7(A)(2)" in s]
         if sheet_7a:
             df_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0])
@@ -128,12 +162,12 @@ if fk_file is not None:
                 sgst_r = float(pd.to_numeric(r.iloc[6], errors='coerce') or 0)
                 rate = cgst_r + sgst_r
                 state = "Delhi"
-                if abs(gross) > 0.01 or abs(returns) > 0.01:
+                if abs(gross) > 0.001 or abs(returns) > 0.001:
                     processed_rows.append({"Platform": "Flipkart", "Gross": gross, "Return": returns, "Rate": rate, "State": state})
     except Exception as e:
         st.error(f"Flipkart File Error: {e}")
 
-# --- 3. Process Amazon ---
+# 3. Process Amazon
 if az_file is not None:
     try:
         az_df = pd.read_excel(az_file) if az_file.name.endswith(('xlsx', 'xls')) else pd.read_csv(az_file)
@@ -153,38 +187,48 @@ if az_file is not None:
     except Exception as e:
         st.error(f"Amazon File Error: {e}")
 
-# --- MASTER SUMMARY & PIVOT ENGINE ---
+# Calculations & Master Display
 if len(processed_rows) > 0:
     master_df = pd.DataFrame(processed_rows)
     master_df['Net Taxable'] = master_df['Gross'] - master_df['Return']
-    master_df = master_df[master_df['Net Taxable'].abs() > 0.01].copy()
+    master_df = master_df[master_df['Net Taxable'].abs() > 0.001].copy()
 
-    # Apply Mapping Logic
     def enrich_row(row):
-        code, st_proper = clean_state_name(row['State'])
+        code, st_proper = clean_state_info(row['State'])
         supply = "INTRA" if code == "07" or "DELHI" in st_proper.upper() else "INTER"
         ecomm_gstin = PLATFORM_GSTIN_MAP.get(row['Platform'], "")
         return pd.Series([code, st_proper, supply, ecomm_gstin], index=['StateCode', 'CleanState', 'SupplyType', 'EcommGSTIN'])
 
     master_df[['StateCode', 'CleanState', 'SupplyType', 'EcommGSTIN']] = master_df.apply(enrich_row, axis=1)
 
-    # Calculate Taxes
     master_df['TaxAmount'] = (master_df['Net Taxable'] * master_df['Rate'] / 100).round(2)
     master_df['IGST'] = master_df.apply(lambda r: r['TaxAmount'] if r['SupplyType'] == "INTER" else 0.0, axis=1)
     master_df['CGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
     master_df['SGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
 
-    # --- TABLE 1: State-Wise Summary (Left Side) ---
+    # TABLE 1: State-Wise Summary (Left Side)
     t1 = master_df.groupby(['SupplyType', 'StateCode', 'CleanState', 'Rate']).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
         'CGST': 'sum',
         'SGST': 'sum'
     }).reset_index()
-    t1['POS'] = t1['StateCode'] + "-" + t1['CleanState']
-    t1 = t1[['SupplyType', 'POS', 'Rate', 'Net Taxable', 'IGST', 'CGST', 'SGST']].round(2)
+    t1['Place Of Supply (POS)'] = t1['StateCode'] + "-" + t1['CleanState']
+    t1 = t1[['SupplyType', 'Place Of Supply (POS)', 'Rate', 'Net Taxable', 'IGST', 'CGST', 'SGST']].round(2)
 
-    # --- TABLE 2: Platform Breakdown (Right Side) ---
+    # Table 1 Grand Total
+    t1_total = pd.DataFrame([{
+        'SupplyType': 'Grand Total',
+        'Place Of Supply (POS)': '',
+        'Rate': '',
+        'Net Taxable': round(t1['Net Taxable'].sum(), 2),
+        'IGST': round(t1['IGST'].sum(), 2),
+        'CGST': round(t1['CGST'].sum(), 2),
+        'SGST': round(t1['SGST'].sum(), 2)
+    }])
+    t1_display = pd.concat([t1, t1_total], ignore_index=True)
+
+    # TABLE 2: Platform Breakdown (Right Side)
     t2 = master_df.groupby(['Platform', 'SupplyType']).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
@@ -192,25 +236,47 @@ if len(processed_rows) > 0:
         'SGST': 'sum'
     }).reset_index().round(2)
 
-    # --- TABLE 3: GSTR-1 B2CS Final Format ---
+    # Table 2 Grand Total
+    t2_total = pd.DataFrame([{
+        'Platform': 'Grand Total',
+        'SupplyType': '',
+        'Net Taxable': round(t2['Net Taxable'].sum(), 2),
+        'IGST': round(t2['IGST'].sum(), 2),
+        'CGST': round(t2['CGST'].sum(), 2),
+        'SGST': round(t2['SGST'].sum(), 2)
+    }])
+    t2_display = pd.concat([t2, t2_total], ignore_index=True)
+
+    # TABLE 3: GSTR-1 B2CS Final Format
     b2cs_export = t1.copy()
     b2cs_export['Type'] = "OE"
     b2cs_export['Applicable % of Tax Rate'] = ""
     b2cs_export['Cess Amount'] = 0.0
     b2cs_export['E-Commerce GSTIN'] = PLATFORM_GSTIN_MAP.get("Meesho", "")
-    b2cs_export = b2cs_export[['Type', 'POS', 'Rate', 'Applicable % of Tax Rate', 'Net Taxable', 'Cess Amount', 'E-Commerce GSTIN']]
-    b2cs_export.rename(columns={'POS': 'Place Of Supply', 'Net Taxable': 'Taxable Value'}, inplace=True)
+    b2cs_export = b2cs_export[['Type', 'Place Of Supply (POS)', 'Rate', 'Applicable % of Tax Rate', 'Net Taxable', 'Cess Amount', 'E-Commerce GSTIN']]
+    b2cs_export.rename(columns={'Place Of Supply (POS)': 'Place Of Supply', 'Net Taxable': 'Taxable Value'}, inplace=True)
 
     st.divider()
-    st.header("📊 GSTR-3B Advance Control Report (Side-by-Side Summary)")
+    st.header("📊 GSTR-3B ADVANCE CONTROL REPORT (SIDE-BY-SIDE SUMMARY)")
 
     tab_col1, tab_col2 = st.columns([3, 2])
     with tab_col1:
         st.subheader("🔵 Table 1: State-wise POS Breakdown")
-        st.dataframe(t1, use_container_width=True)
+        st.dataframe(t1_display.style.format({
+            'Net Taxable': '{:,.2f}',
+            'IGST': '{:,.2f}',
+            'CGST': '{:,.2f}',
+            'SGST': '{:,.2f}'
+        }), use_container_width=True)
+
     with tab_col2:
         st.subheader("🔴 Table 2: Platform Summary (INTER / INTRA)")
-        st.dataframe(t2, use_container_width=True)
+        st.dataframe(t2_display.style.format({
+            'Net Taxable': '{:,.2f}',
+            'IGST': '{:,.2f}',
+            'CGST': '{:,.2f}',
+            'SGST': '{:,.2f}'
+        }), use_container_width=True)
 
     st.divider()
     st.header("📑 Table 7: GSTR-1 B2CS Final Table")
@@ -221,11 +287,10 @@ if len(processed_rows) > 0:
     st.subheader("📥 Export & Download Master Files")
     d1, d2, d3 = st.columns(3)
 
-    # 1. Multi-Sheet Excel Export
     excel_buf = io.BytesIO()
     with pd.ExcelWriter(excel_buf, engine='xlsxwriter') as writer:
-        t1.to_excel(writer, index=False, sheet_name='State_Wise_Summary')
-        t2.to_excel(writer, index=False, sheet_name='Platform_Summary')
+        t1_display.to_excel(writer, index=False, sheet_name='State_Wise_Summary')
+        t2_display.to_excel(writer, index=False, sheet_name='Platform_Summary')
         b2cs_export.to_excel(writer, index=False, sheet_name='GSTR1_B2CS_Final')
         master_df.to_excel(writer, index=False, sheet_name='Raw_Consolidated_Data')
     
@@ -237,7 +302,6 @@ if len(processed_rows) > 0:
         use_container_width=True
     )
 
-    # 2. Offline Utility CSV Export
     csv_buf = io.StringIO()
     b2cs_export.to_csv(csv_buf, index=False)
     d2.download_button(
@@ -248,10 +312,9 @@ if len(processed_rows) > 0:
         use_container_width=True
     )
 
-    # 3. GSTR-1 Portal Compliant JSON Export
     json_b2cs_list = []
     for _, r in t1.iterrows():
-        pos_c = r['POS'].split('-')[0]
+        pos_c = r['Place Of Supply (POS)'].split('-')[0]
         json_b2cs_list.append({
             "sply_ty": r['SupplyType'],
             "rt": float(r['Rate']),
