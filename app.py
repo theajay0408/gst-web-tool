@@ -3,7 +3,28 @@ import pandas as pd
 import json
 import io
 
-st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="🔒", layout="wide")
+
+# ==================== PASSWORD AUTHENTICATION ====================
+ADMIN_PASSWORD = "Ajay@GST2026"  # <-- यहाँ अपना मनपसंद पासवर्ड सेट कर सकते हैं
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+def check_password():
+    if st.session_state.get("password_input") == ADMIN_PASSWORD:
+        st.session_state.authenticated = True
+    else:
+        st.session_state.authenticated = False
+        st.error("❌ गलत पासवर्ड! कृपया सही पासवर्ड दर्ज करें।")
+
+if not st.session_state.authenticated:
+    st.title("🔒 GST Utility Portal Login")
+    st.markdown("इस टूल का उपयोग करने के लिए कृपया अधिकृत पासवर्ड दर्ज करें।")
+    st.text_input("पासवर्ड दर्ज करें:", type="password", key="password_input", on_change=check_password)
+    st.button("लॉगिन करें", on_click=check_password)
+    st.stop()  # जब तक पासवर्ड सही नहीं होगा, आगे का कोई कोड रन नहीं होगा
+# =================================================================
 
 # Complete GST State Master Dictionary with Variations
 STATE_MASTER = {
@@ -75,10 +96,15 @@ def clean_state_info(raw_state):
     if st_clean in STATE_MASTER:
         return STATE_MASTER[st_clean]
     
-    # Fallback
     return "00", st_clean.title()
 
-st.title("⚖️ Master E-Commerce GST & Return Processing Utility")
+# Top Header with Logout Option
+head_col1, head_col2 = st.columns([6, 1])
+head_col1.title("⚖️ Master E-Commerce GST & Return Processing Utility")
+if head_col2.button("लॉगआउट"):
+    st.session_state.authenticated = False
+    st.rerun()
+
 st.markdown("Meesho, Flipkart और Amazon के डेटा को प्रोसेस करके **Side-by-Side Pivot Report**, **GSTR-1 CSV/Excel** और **JSON** तैयार करें।")
 
 # UI: Client Details
@@ -187,7 +213,7 @@ if az_file is not None:
     except Exception as e:
         st.error(f"Amazon File Error: {e}")
 
-# Calculations & Master Display
+# Master Display & Reports
 if len(processed_rows) > 0:
     master_df = pd.DataFrame(processed_rows)
     master_df['Net Taxable'] = master_df['Gross'] - master_df['Return']
@@ -206,7 +232,7 @@ if len(processed_rows) > 0:
     master_df['CGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
     master_df['SGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
 
-    # TABLE 1: State-Wise Summary (Left Side)
+    # Table 1: State-wise Breakup
     t1 = master_df.groupby(['SupplyType', 'StateCode', 'CleanState', 'Rate']).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
@@ -216,7 +242,6 @@ if len(processed_rows) > 0:
     t1['Place Of Supply (POS)'] = t1['StateCode'] + "-" + t1['CleanState']
     t1 = t1[['SupplyType', 'Place Of Supply (POS)', 'Rate', 'Net Taxable', 'IGST', 'CGST', 'SGST']].round(2)
 
-    # Table 1 Grand Total
     t1_total = pd.DataFrame([{
         'SupplyType': 'Grand Total',
         'Place Of Supply (POS)': '',
@@ -228,7 +253,7 @@ if len(processed_rows) > 0:
     }])
     t1_display = pd.concat([t1, t1_total], ignore_index=True)
 
-    # TABLE 2: Platform Breakdown (Right Side)
+    # Table 2: Platform Summary
     t2 = master_df.groupby(['Platform', 'SupplyType']).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
@@ -236,7 +261,6 @@ if len(processed_rows) > 0:
         'SGST': 'sum'
     }).reset_index().round(2)
 
-    # Table 2 Grand Total
     t2_total = pd.DataFrame([{
         'Platform': 'Grand Total',
         'SupplyType': '',
@@ -247,7 +271,7 @@ if len(processed_rows) > 0:
     }])
     t2_display = pd.concat([t2, t2_total], ignore_index=True)
 
-    # TABLE 3: GSTR-1 B2CS Final Format
+    # Table 3: GSTR-1 B2CS Final Format
     b2cs_export = t1.copy()
     b2cs_export['Type'] = "OE"
     b2cs_export['Applicable % of Tax Rate'] = ""
@@ -282,7 +306,7 @@ if len(processed_rows) > 0:
     st.header("📑 Table 7: GSTR-1 B2CS Final Table")
     st.dataframe(b2cs_export, use_container_width=True)
 
-    # Downloads
+    # Export Downloads
     st.divider()
     st.subheader("📥 Export & Download Master Files")
     d1, d2, d3 = st.columns(3)
