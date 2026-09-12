@@ -7,7 +7,7 @@ import re
 
 st.set_page_config(page_title="GST Online Seller Automation", page_icon="⚖️", layout="wide")
 
-# CSS for Clean Modern Card UI (OkayGST Theme)
+# CSS for Clean Modern UI
 st.markdown("""
     <style>
     header a[href*="github"],
@@ -21,15 +21,31 @@ st.markdown("""
         display: none !important;
         visibility: hidden !important;
     }
-    .platform-card {
-        background-color: #1e2530;
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid #2e3846;
-        margin-bottom: 20px;
-    }
     </style>
 """, unsafe_allow_html=True)
+
+components.html("""
+    <script>
+    function removeIcons() {
+        const doc = window.parent.document;
+        const gitLinks = doc.querySelectorAll('a[href*="github.com"], button:has(svg[data-testid="stIconGitHub"])');
+        gitLinks.forEach(el => el.style.setProperty('display', 'none', 'important'));
+        
+        const editButtons = doc.querySelectorAll('button[title*="Edit"], button[aria-label*="Edit"], button:has(svg[data-testid="stIconPencil"])');
+        editButtons.forEach(el => el.style.setProperty('display', 'none', 'important'));
+
+        const svgs = doc.querySelectorAll('header svg, [data-testid="stToolbar"] svg');
+        svgs.forEach(svg => {
+            const html = svg.outerHTML.toLowerCase();
+            if (html.includes('m12 2c6.477') || html.includes('github') || html.includes('m14.06 9.02') || html.includes('pencil')) {
+                const btn = svg.closest('button') || svg.closest('a');
+                if (btn) btn.style.setProperty('display', 'none', 'important');
+            }
+        });
+    }
+    setInterval(removeIcons, 300);
+    </script>
+""", height=0, width=0)
 
 STATE_MASTER = {
     "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"), "HIMACHAL PRADESH": ("02", "Himachal Pradesh"),
@@ -59,17 +75,22 @@ def clean_state_info(raw_state):
     code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
     if code_match:
         c_code = code_match.group(1).zfill(2)
-        if c_code in CODE_TO_STATE: return CODE_TO_STATE[c_code]
+        if c_code in CODE_TO_STATE:
+            return CODE_TO_STATE[c_code]
         st_clean = code_match.group(2).strip()
-    if "MAHA" in st_clean: return "27", "Maharashtra"
-    if "ANDHRA" in st_clean: return "37", "Andhra Pradesh"
-    if "BENGAL" in st_clean: return "19", "West Bengal"
-    if "CHATTIS" in st_clean: return "22", "Chhattisgarh"
-    if "ODISHA" in st_clean or "ORISSA" in st_clean: return "21", "Odisha"
+    if "MAHA" in st_clean:
+        return "27", "Maharashtra"
+    if "ANDHRA" in st_clean:
+        return "37", "Andhra Pradesh"
+    if "BENGAL" in st_clean:
+        return "19", "West Bengal"
+    if "CHATTIS" in st_clean:
+        return "22", "Chhattisgarh"
+    if "ODISHA" in st_clean or "ORISSA" in st_clean:
+        return "21", "Odisha"
     return STATE_MASTER.get(st_clean, ("00", st_clean.title()))
 
-# Top Bar Configuration
-st.title("💼 GST Online Seller - Import & Master Return")
+st.title("💼 GST Online Seller - Return Generator")
 c1, c2, c3 = st.columns([2, 1, 1])
 active_gstin = c1.text_input("ACTIVE GSTIN", value="07HJBPK7976J1ZI")
 home_state_code = active_gstin[:2] if len(active_gstin) >= 2 else "07"
@@ -80,7 +101,6 @@ fp_code = period.replace("-", "")
 
 st.divider()
 
-# Platform File Upload Section
 st.subheader("📁 E-COMMERCE PLATFORMS")
 p_col1, p_col2, p_col3 = st.columns(3)
 
@@ -100,7 +120,6 @@ with p_col3:
 
 processed_rows = []
 
-# Process Meesho
 if m_sales is not None:
     try:
         df_s = pd.read_excel(m_sales) if m_sales.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_sales)
@@ -123,7 +142,6 @@ if m_sales is not None:
     except Exception as e:
         st.error(f"Meesho Error: {e}")
 
-# Process Flipkart
 if fk_file is not None:
     try:
         xl = pd.ExcelFile(fk_file)
@@ -133,7 +151,8 @@ if fk_file is not None:
             h_idx = 0
             for idx, rw in raw_7b.head(5).iterrows():
                 if any(x in " ".join([str(v).lower() for v in rw]) for x in ["rate", "taxable"]):
-                    h_idx = idx; break
+                    h_idx = idx
+                    break
             df_7b = pd.read_excel(fk_file, sheet_name=s_7b[0], skiprows=h_idx)
             for _, r in df_7b.iterrows():
                 g = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
@@ -142,7 +161,8 @@ if fk_file is not None:
                 st_val = ""
                 for ci in [8, 9, 10, 7]:
                     if len(r) > ci and str(r.iloc[ci]).strip().upper() not in ["NAN", "NONE", "0", "0.0", ""]:
-                        st_val = str(r.iloc[ci]).strip(); break
+                        st_val = str(r.iloc[ci]).strip()
+                        break
                 if abs(g) > 0.001 or abs(ret) > 0.001:
                     processed_rows.append({"Platform": "Flipkart", "Gross": g, "Return": ret, "Rate": rt, "State": st_val or "Delhi"})
 
@@ -152,7 +172,8 @@ if fk_file is not None:
             h_idx_a = 0
             for idx, rw in raw_7a.head(5).iterrows():
                 if any(x in " ".join([str(v).lower() for v in rw]) for x in ["rate", "taxable"]):
-                    h_idx_a = idx; break
+                    h_idx_a = idx
+                    break
             df_7a = pd.read_excel(fk_file, sheet_name=s_7a[0], skiprows=h_idx_a)
             for _, r in df_7a.iterrows():
                 g = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
@@ -163,7 +184,6 @@ if fk_file is not None:
     except Exception as e:
         st.error(f"Flipkart Error: {e}")
 
-# Process Amazon
 if az_file is not None:
     try:
         az_df = pd.read_excel(az_file) if az_file.name.endswith(('xlsx', 'xls')) else pd.read_csv(az_file)
@@ -180,7 +200,6 @@ if az_file is not None:
     except Exception as e:
         st.error(f"Amazon Error: {e}")
 
-# Data Aggregation & GSTR Tables
 if len(processed_rows) > 0:
     mdf = pd.DataFrame(processed_rows)
     mdf['Net'] = mdf['Gross'] - mdf['Return']
@@ -198,18 +217,15 @@ if len(processed_rows) > 0:
     mdf['CGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
     mdf['SGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
 
-    # Table 7: B2CS Aggregation
     t7 = mdf.groupby(['SupplyType', 'StateCode', 'StateName', 'Rate'], dropna=False).agg({
         'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
     }).reset_index().round(2)
     t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
 
-    # Table 14: E-Commerce Operator Supplies Summary
     t14 = mdf.groupby(['Platform', 'EcommGSTIN'], dropna=False).agg({
         'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
     }).reset_index().round(2)
 
-    # UI Display
     st.divider()
     st.subheader("📑 7 - B2CS (OTHERS)")
     st.dataframe(t7[['SupplyType', 'Place Of Supply', 'Rate', 'Net', 'IGST', 'CGST', 'SGST']].rename(columns={'Net': 'Taxable Value (₹)'}), use_container_width=True)
@@ -217,47 +233,32 @@ if len(processed_rows) > 0:
     st.subheader("🏢 14 - SUPPLIES MADE THROUGH E-COMMERCE OPERATORS U/S 52")
     st.dataframe(t14.rename(columns={'Net': 'Net Value of Supplies (₹)'}), use_container_width=True)
 
-    # Official GST Portal Compatible JSON Generation
     b2cs_json_list = []
     for _, r in t7.iterrows():
-        entry = {
-            "sply_ty": r['SupplyType'],
-            "pos": str(r['StateCode']).zfill(2),
+        pos_num = str(r['StateCode']).zfill(2)
+        row_dict = {
+            "sply_ty": str(r['SupplyType']),
+            "pos": pos_num,
             "typ": "OE",
             "rt": float(r['Rate']),
-            "txval": float(r['Net']),
+            "txval": round(float(r['Net']), 2),
             "csamt": 0.0
         }
         if r['SupplyType'] == "INTER":
-            entry["iamt"] = float(r['IGST'])
+            row_dict["iamt"] = round(float(r['IGST']), 2)
         else:
-            entry["camt"] = float(r['CGST'])
-            entry["samt"] = float(r['SGST'])
-        b2cs_json_list.append(entry)
-
-    ecom_json_list = []
-    for _, r in t14.iterrows():
-        ecom_json_list.append({
-            "etin": str(r['EcommGSTIN']),
-            "txval": float(r['Net']),
-            "iamt": float(r['IGST']),
-            "camt": float(r['CGST']),
-            "samt": float(r['SGST']),
-            "csamt": 0.0
-        })
+            row_dict["camt"] = round(float(r['CGST']), 2)
+            row_dict["samt"] = round(float(r['SGST']), 2)
+        b2cs_json_list.append(row_dict)
 
     official_portal_json = {
-        "gstin": active_gstin,
-        "fp": fp_code,
-        "gt": 0.0,
-        "cur_gt": 0.0,
-        "b2cs": b2cs_json_list,
-        "sec_14": {
-            "ecom_supplies": ecom_json_list
-        }
+        "gstin": active_gstin.strip(),
+        "fp": str(fp_code).strip(),
+        "version": "GST3.1.4",
+        "hash": "hash",
+        "b2cs": b2cs_json_list
     }
 
-    # B2CS Offline Excel Format (Single Sheet)
     b2cs_excel = pd.DataFrame({
         'Type': 'OE',
         'Place Of Supply': t7['Place Of Supply'],
