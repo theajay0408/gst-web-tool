@@ -212,10 +212,8 @@ if fk_file is not None:
         # Process 7(B) Sheet (Inter-state)
         sheet_7b = [s for s in xl.sheet_names if "7(B)" in s or "7(B)(2)" in s]
         if sheet_7b:
-            # हेडर ढूंढने के लिए पहले पूरी शीट लोड करें
             raw_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], header=None)
             
-            # हेडर वाली रो ढूंढें
             header_idx = 0
             for idx, row_vals in raw_7b.head(5).iterrows():
                 row_str = " ".join([str(v).lower() for v in row_vals])
@@ -225,13 +223,11 @@ if fk_file is not None:
             
             df_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], skiprows=header_idx)
             
-            # कॉलम इंडेक्स पहचानें
             for _, r in df_7b.iterrows():
                 gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0) if len(r) > 1 else 0
                 returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0) if len(r) > 2 else 0
                 rate = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0) if len(r) > 4 else 0
                 
-                # राज्य ढूँढने के लिए कॉलम 8, 9, या 10 देखें
                 state = ""
                 for col_idx in [8, 9, 10, 7]:
                     if len(r) > col_idx:
@@ -348,12 +344,12 @@ if len(processed_rows) > 0:
     }])
     t2_display = pd.concat([t2, t2_total], ignore_index=True)
 
-    # Table 3: GSTR-1 B2CS Final Format
+    # Table 3: GSTR-1 B2CS Final Format (Exact Match to Offline Utility Table)
     b2cs_export = t1.copy()
     b2cs_export['Type'] = "OE"
     b2cs_export['Applicable % of Tax Rate'] = ""
-    b2cs_export['Cess Amount'] = 0.0
-    b2cs_export['E-Commerce GSTIN'] = PLATFORM_GSTIN_MAP.get("Flipkart", "")
+    b2cs_export['Cess Amount'] = ""
+    b2cs_export['E-Commerce GSTIN'] = ""
     b2cs_export = b2cs_export[['Type', 'Place Of Supply (POS)', 'Rate', 'Applicable % of Tax Rate', 'Net Taxable', 'Cess Amount', 'E-Commerce GSTIN']]
     b2cs_export.rename(columns={'Place Of Supply (POS)': 'Place Of Supply', 'Net Taxable': 'Taxable Value'}, inplace=True)
 
@@ -383,26 +379,25 @@ if len(processed_rows) > 0:
     st.header("📑 Table 7: GSTR-1 B2CS Final Table")
     st.dataframe(b2cs_export, use_container_width=True)
 
-    # Export Downloads
+    # Export Downloads (Single Sheet Clean B2CS for GST Offline Tool)
     st.divider()
     st.subheader("📥 Export & Download Master Files")
     d1, d2, d3 = st.columns(3)
 
+    # 1. Single Sheet Clean Excel File (Exact format matching offline tool)
     excel_buf = io.BytesIO()
-    with pd.ExcelWriter(excel_buf, engine='xlsxwriter') as writer:
-        t1_display.to_excel(writer, index=False, sheet_name='State_Wise_Summary')
-        t2_display.to_excel(writer, index=False, sheet_name='Platform_Summary')
+    with pd.ExcelWriter(excel_buf, engine='openpyxl') as writer:
         b2cs_export.to_excel(writer, index=False, sheet_name='GSTR1_B2CS_Final')
-        master_df.to_excel(writer, index=False, sheet_name='Raw_Consolidated_Data')
     
     d1.download_button(
-        "📊 Download Master Excel Report",
+        "📊 Download GSTR-1 B2CS Excel",
         data=excel_buf.getvalue(),
-        file_name=f"GSTR_Master_Report_{return_period}.xlsx",
+        file_name=f"GSTR1_B2CS_{return_period}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
+    # 2. Clean CSV File
     csv_buf = io.StringIO()
     b2cs_export.to_csv(csv_buf, index=False)
     d2.download_button(
@@ -413,9 +408,10 @@ if len(processed_rows) > 0:
         use_container_width=True
     )
 
+    # 3. Direct Offline Utility JSON File
     json_b2cs_list = []
     for _, r in t1.iterrows():
-        pos_c = r['Place Of Supply (POS)'].split('-')[0]
+        pos_c = str(r['Place Of Supply (POS)']).split('-')[0].strip()
         json_b2cs_list.append({
             "sply_ty": r['SupplyType'],
             "rt": float(r['Rate']),
