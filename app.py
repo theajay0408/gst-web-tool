@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 import json
 import io
+import re
 
 st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
 
@@ -102,6 +103,8 @@ STATE_MASTER = {
     "OTHER TERRITORY": ("97", "Other Territory")
 }
 
+CODE_TO_STATE = {v[0]: v for v in STATE_MASTER.values()}
+
 PLATFORM_GSTIN_MAP = {
     "Meesho": "07AARCM9332R1CQ",
     "Flipkart": "07AAGCF0285P1ZL",
@@ -110,6 +113,22 @@ PLATFORM_GSTIN_MAP = {
 
 def clean_state_info(raw_state):
     st_clean = str(raw_state).upper().strip()
+    if not st_clean or st_clean in ["NAN", "NONE", "NULL"]:
+        return "00", "Unknown"
+
+    # अगर "27-MAHARASHTRA" जैसा फॉरमैट हो, तो पहले कोड से पकड़ें
+    code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
+    if code_match:
+        c_code = code_match.group(1).zfill(2)
+        c_rest = code_match.group(2).strip()
+        if c_code in CODE_TO_STATE:
+            return CODE_TO_STATE[c_code]
+        if c_rest in STATE_MASTER:
+            return STATE_MASTER[c_rest]
+        st_clean = c_rest
+
+    if "MAHA" in st_clean:
+        return "27", "Maharashtra"
     if "ANDHRA" in st_clean:
         return "37", "Andhra Pradesh"
     if "JAMMU" in st_clean:
@@ -118,6 +137,8 @@ def clean_state_info(raw_state):
         return "22", "Chhattisgarh"
     if "ORISSA" in st_clean or "ODISHA" in st_clean:
         return "21", "Odisha"
+    if "BENGAL" in st_clean:
+        return "19", "West Bengal"
 
     if st_clean in STATE_MASTER:
         return STATE_MASTER[st_clean]
@@ -187,25 +208,61 @@ if m_sales is not None:
 if fk_file is not None:
     try:
         xl = pd.ExcelFile(fk_file)
+        
+        # Process 7(B) Sheet (Inter-state)
         sheet_7b = [s for s in xl.sheet_names if "7(B)" in s or "7(B)(2)" in s]
         if sheet_7b:
-            df_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0])
-            for _, r in df_7b.iloc[1:].iterrows():
-                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
-                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0)
-                rate = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0)
-                state = str(r.iloc[8]).strip() if len(r) > 8 else "Delhi"
-                if state and (abs(gross) > 0.001 or abs(returns) > 0.001):
+            # हेडर ढूंढने के लिए पहले पूरी शीट लोड करें
+            raw_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], header=None)
+            
+            # हेडर वाली रो ढूंढें
+            header_idx = 0
+            for idx, row_vals in raw_7b.head(5).iterrows():
+                row_str = " ".join([str(v).lower() for v in row_vals])
+                if "rate" in row_str or "taxable" in row_str:
+                    header_idx = idx
+                    break
+            
+            df_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], skiprows=header_idx)
+            
+            # कॉलम इंडेक्स पहचानें
+            for _, r in df_7b.iterrows():
+                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0) if len(r) > 1 else 0
+                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0) if len(r) > 2 else 0
+                rate = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0) if len(r) > 4 else 0
+                
+                # राज्य ढूँढने के लिए कॉलम 8, 9, या 10 देखें
+                state = ""
+                for col_idx in [8, 9, 10, 7]:
+                    if len(r) > col_idx:
+                        val = str(r.iloc[col_idx]).strip()
+                        if val and val.upper() not in ["NAN", "NONE", "0", "0.0"]:
+                            state = val
+                            break
+                
+                if not state:
+                    state = "Delhi"
+
+                if (abs(gross) > 0.001 or abs(returns) > 0.001):
                     processed_rows.append({"Platform": "Flipkart", "Gross": gross, "Return": returns, "Rate": rate, "State": state})
 
+        # Process 7(A) Sheet (Intra-state)
         sheet_7a = [s for s in xl.sheet_names if "7(A)" in s or "7(A)(2)" in s]
         if sheet_7a:
-            df_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0])
-            for _, r in df_7a.iloc[1:].iterrows():
-                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
-                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0)
-                cgst_r = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0)
-                sgst_r = float(pd.to_numeric(r.iloc[6], errors='coerce') or 0)
+            raw_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0], header=None)
+            header_idx_a = 0
+            for idx, row_vals in raw_7a.head(5).iterrows():
+                row_str = " ".join([str(v).lower() for v in row_vals])
+                if "rate" in row_str or "taxable" in row_str:
+                    header_idx_a = idx
+                    break
+                    
+            df_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0], skiprows=header_idx_a)
+            for _, r in df_7a.iterrows():
+                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0) if len(r) > 1 else 0
+                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0) if len(r) > 2 else 0
+                cgst_r = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0) if len(r) > 4 else 0
+                sgst_r = float(pd.to_numeric(r.iloc[6], errors='coerce') or 0) if len(r) > 6 else 0
                 rate = cgst_r + sgst_r
                 state = "Delhi"
                 if abs(gross) > 0.001 or abs(returns) > 0.001:
@@ -253,7 +310,7 @@ if len(processed_rows) > 0:
     master_df['SGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
 
     # Table 1: State-wise Breakup
-    t1 = master_df.groupby(['SupplyType', 'StateCode', 'CleanState', 'Rate']).agg({
+    t1 = master_df.groupby(['SupplyType', 'StateCode', 'CleanState', 'Rate'], dropna=False).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
         'CGST': 'sum',
@@ -274,7 +331,7 @@ if len(processed_rows) > 0:
     t1_display = pd.concat([t1, t1_total], ignore_index=True)
 
     # Table 2: Platform Summary
-    t2 = master_df.groupby(['Platform', 'SupplyType']).agg({
+    t2 = master_df.groupby(['Platform', 'SupplyType'], dropna=False).agg({
         'Net Taxable': 'sum',
         'IGST': 'sum',
         'CGST': 'sum',
@@ -296,7 +353,7 @@ if len(processed_rows) > 0:
     b2cs_export['Type'] = "OE"
     b2cs_export['Applicable % of Tax Rate'] = ""
     b2cs_export['Cess Amount'] = 0.0
-    b2cs_export['E-Commerce GSTIN'] = PLATFORM_GSTIN_MAP.get("Meesho", "")
+    b2cs_export['E-Commerce GSTIN'] = PLATFORM_GSTIN_MAP.get("Flipkart", "")
     b2cs_export = b2cs_export[['Type', 'Place Of Supply (POS)', 'Rate', 'Applicable % of Tax Rate', 'Net Taxable', 'Cess Amount', 'E-Commerce GSTIN']]
     b2cs_export.rename(columns={'Place Of Supply (POS)': 'Place Of Supply', 'Net Taxable': 'Taxable Value'}, inplace=True)
 
