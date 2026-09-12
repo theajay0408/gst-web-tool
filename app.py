@@ -5,12 +5,11 @@ import json
 import io
 import re
 
-st.set_page_config(page_title="E-Commerce GST Master Automation", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="GST Online Seller Automation", page_icon="⚖️", layout="wide")
 
-# 1. Deep CSS to hide GitHub and Edit icons
+# CSS for Clean Modern Card UI (OkayGST Theme)
 st.markdown("""
     <style>
-    /* Specific selectors for GitHub & Pencil buttons */
     header a[href*="github"],
     header button[title*="Edit"],
     header button[aria-label*="Edit"],
@@ -22,92 +21,34 @@ st.markdown("""
         display: none !important;
         visibility: hidden !important;
     }
+    .platform-card {
+        background-color: #1e2530;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #2e3846;
+        margin-bottom: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Direct JavaScript Injection into Parent Header
-components.html("""
-    <script>
-    function removeIcons() {
-        const doc = window.parent.document;
-        // 1. Remove GitHub Links / Buttons
-        const gitLinks = doc.querySelectorAll('a[href*="github.com"], button:has(svg[data-testid="stIconGitHub"])');
-        gitLinks.forEach(el => el.style.setProperty('display', 'none', 'important'));
-        
-        // 2. Remove Pencil / Edit App Buttons
-        const editButtons = doc.querySelectorAll('button[title*="Edit"], button[aria-label*="Edit"], button:has(svg[data-testid="stIconPencil"])');
-        editButtons.forEach(el => el.style.setProperty('display', 'none', 'important'));
-
-        // Target SVGs directly
-        const svgs = doc.querySelectorAll('header svg, [data-testid="stToolbar"] svg');
-        svgs.forEach(svg => {
-            const html = svg.outerHTML.toLowerCase();
-            if (html.includes('m12 2c6.477') || html.includes('github') || html.includes('m14.06 9.02') || html.includes('pencil')) {
-                const btn = svg.closest('button') || svg.closest('a');
-                if (btn) btn.style.setProperty('display', 'none', 'important');
-            }
-        });
-    }
-    // Run immediately and repeatedly to catch dynamic loads
-    setInterval(removeIcons, 300);
-    </script>
-""", height=0, width=0)
-
-# Complete GST State Master Dictionary with Variations
 STATE_MASTER = {
-    "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"),
-    "JAMMU & KASHMIR": ("01", "Jammu and Kashmir"),
-    "HIMACHAL PRADESH": ("02", "Himachal Pradesh"),
-    "PUNJAB": ("03", "Punjab"),
-    "CHANDIGARH": ("04", "Chandigarh"),
-    "UTTARAKHAND": ("05", "Uttarakhand"),
-    "UTTRANCHAL": ("05", "Uttarakhand"),
-    "HARYANA": ("06", "Haryana"),
-    "DELHI": ("07", "Delhi"),
-    "RAJASTHAN": ("08", "Rajasthan"),
-    "UTTAR PRADESH": ("09", "Uttar Pradesh"),
-    "BIHAR": ("10", "Bihar"),
-    "SIKKIM": ("11", "Sikkim"),
-    "ARUNACHAL PRADESH": ("12", "Arunachal Pradesh"),
-    "NAGALAND": ("13", "Nagaland"),
-    "MANIPUR": ("14", "Manipur"),
-    "MIZORAM": ("15", "Mizoram"),
-    "TRIPURA": ("16", "Tripura"),
-    "MEGHALAYA": ("17", "Meghalaya"),
-    "ASSAM": ("18", "Assam"),
-    "WEST BENGAL": ("19", "West Bengal"),
-    "JHARKHAND": ("20", "Jharkhand"),
-    "ODISHA": ("21", "Odisha"),
-    "ORISSA": ("21", "Odisha"),
-    "CHHATTISGARH": ("22", "Chhattisgarh"),
-    "CHATTISGARH": ("22", "Chhattisgarh"),
-    "MADHYA PRADESH": ("23", "Madhya Pradesh"),
-    "GUJARAT": ("24", "Gujarat"),
-    "DAMAN AND DIU": ("25", "Daman and Diu"),
-    "DADRA AND NAGAR HAVELI": ("26", "Dadra and Nagar Haveli"),
-    "DADRA & NAGAR HAVELI AND DAMAN & DIU": ("26", "Dadra and Nagar Haveli and Daman and Diu"),
-    "MAHARASHTRA": ("27", "Maharashtra"),
-    "ANDHRA PRADESH": ("37", "Andhra Pradesh"),
-    "ANDHRA PRADESH(NEW)": ("37", "Andhra Pradesh"),
-    "KARNATAKA": ("29", "Karnataka"),
-    "GOA": ("30", "Goa"),
-    "LAKSHADWEEP": ("31", "Lakshadweep"),
-    "KERALA": ("32", "Kerala"),
-    "TAMIL NADU": ("33", "Tamil Nadu"),
-    "PUDUCHERRY": ("34", "Puducherry"),
-    "PONDICHERRY": ("34", "Puducherry"),
-    "ANDAMAN AND NICOBAR ISLANDS": ("35", "Andaman and Nicobar Islands"),
-    "ANDAMAN & NICOBAR": ("35", "Andaman and Nicobar Islands"),
-    "TELANGANA": ("36", "Telangana"),
-    "LADAKH": ("38", "Ladakh"),
-    "OTHER TERRITORY": ("97", "Other Territory")
+    "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"), "HIMACHAL PRADESH": ("02", "Himachal Pradesh"),
+    "PUNJAB": ("03", "Punjab"), "CHANDIGARH": ("04", "Chandigarh"), "UTTARAKHAND": ("05", "Uttarakhand"),
+    "HARYANA": ("06", "Haryana"), "DELHI": ("07", "Delhi"), "RAJASTHAN": ("08", "Rajasthan"),
+    "UTTAR PRADESH": ("09", "Uttar Pradesh"), "BIHAR": ("10", "Bihar"), "SIKKIM": ("11", "Sikkim"),
+    "ARUNACHAL PRADESH": ("12", "Arunachal Pradesh"), "NAGALAND": ("13", "Nagaland"), "MANIPUR": ("14", "Manipur"),
+    "MIZORAM": ("15", "Mizoram"), "TRIPURA": ("16", "Tripura"), "MEGHALAYA": ("17", "Meghalaya"),
+    "ASSAM": ("18", "Assam"), "WEST BENGAL": ("19", "West Bengal"), "JHARKHAND": ("20", "Jharkhand"),
+    "ODISHA": ("21", "Odisha"), "CHHATTISGARH": ("22", "Chhattisgarh"), "MADHYA PRADESH": ("23", "Madhya Pradesh"),
+    "GUJARAT": ("24", "Gujarat"), "DAMAN AND DIU": ("25", "Daman and Diu"), "DADRA AND NAGAR HAVELI": ("26", "Dadra and Nagar Haveli"),
+    "MAHARASHTRA": ("27", "Maharashtra"), "ANDHRA PRADESH": ("37", "Andhra Pradesh"), "KARNATAKA": ("29", "Karnataka"),
+    "GOA": ("30", "Goa"), "KERALA": ("32", "Kerala"), "TAMIL NADU": ("33", "Tamil Nadu"), "TELANGANA": ("36", "Telangana")
 }
-
 CODE_TO_STATE = {v[0]: v for v in STATE_MASTER.values()}
 
-PLATFORM_GSTIN_MAP = {
-    "Meesho": "07AARCM9332R1CQ",
-    "Flipkart": "07AAGCF0285P1ZL",
+PLATFORM_ECOMM_GSTIN = {
+    "Meesho": "27AARCM9332R1CO",
+    "Flipkart": "27AACCF0683K1CS",
     "Amazon": "07AAACA6687K1ZT"
 }
 
@@ -115,324 +56,238 @@ def clean_state_info(raw_state):
     st_clean = str(raw_state).upper().strip()
     if not st_clean or st_clean in ["NAN", "NONE", "NULL"]:
         return "00", "Unknown"
-
-    # अगर "27-MAHARASHTRA" जैसा फॉरमैट हो, तो पहले कोड से पकड़ें
     code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
     if code_match:
         c_code = code_match.group(1).zfill(2)
-        c_rest = code_match.group(2).strip()
-        if c_code in CODE_TO_STATE:
-            return CODE_TO_STATE[c_code]
-        if c_rest in STATE_MASTER:
-            return STATE_MASTER[c_rest]
-        st_clean = c_rest
+        if c_code in CODE_TO_STATE: return CODE_TO_STATE[c_code]
+        st_clean = code_match.group(2).strip()
+    if "MAHA" in st_clean: return "27", "Maharashtra"
+    if "ANDHRA" in st_clean: return "37", "Andhra Pradesh"
+    if "BENGAL" in st_clean: return "19", "West Bengal"
+    if "CHATTIS" in st_clean: return "22", "Chhattisgarh"
+    if "ODISHA" in st_clean or "ORISSA" in st_clean: return "21", "Odisha"
+    return STATE_MASTER.get(st_clean, ("00", st_clean.title()))
 
-    if "MAHA" in st_clean:
-        return "27", "Maharashtra"
-    if "ANDHRA" in st_clean:
-        return "37", "Andhra Pradesh"
-    if "JAMMU" in st_clean:
-        return "01", "Jammu and Kashmir"
-    if "CHATTISGARH" in st_clean or "CHHATTISGARH" in st_clean:
-        return "22", "Chhattisgarh"
-    if "ORISSA" in st_clean or "ODISHA" in st_clean:
-        return "21", "Odisha"
-    if "BENGAL" in st_clean:
-        return "19", "West Bengal"
+# Top Bar Configuration
+st.title("💼 GST Online Seller - Import & Master Return")
+c1, c2, c3 = st.columns([2, 1, 1])
+active_gstin = c1.text_input("ACTIVE GSTIN", value="07HJBPK7976J1ZI")
+home_state_code = active_gstin[:2] if len(active_gstin) >= 2 else "07"
+period = c2.selectbox("Period", ["08-2026", "07-2026", "09-2026", "06-2026", "05-2026"])
+return_type = c3.selectbox("Return", ["Monthly", "Quarterly"])
 
-    if st_clean in STATE_MASTER:
-        return STATE_MASTER[st_clean]
-    
-    return "00", st_clean.title()
-
-st.title("⚖️ Master E-Commerce GST & Return Processing Utility")
-st.markdown("Meesho, Flipkart और Amazon के डेटा को प्रोसेस करके **Side-by-Side Pivot Report**, **GSTR-1 CSV/Excel** और **JSON** तैयार करें।")
-
-# UI: Client Details
-st.subheader("📌 Client & Return Details")
-uic1, uic2 = st.columns(2)
-client_gstin = uic1.text_input("Client GSTIN", value="07AABCU9603R1ZM")
-return_period = uic2.selectbox("Return Period (MMYYYY)", [
-    "042025","052025","062025","072025","082025","092025",
-    "102025","112025","122025","012026","022026","032026",
-    "042026","052026","062026","072026","082026","092026"
-])
+fp_code = period.replace("-", "")
 
 st.divider()
 
-# Upload Section for 3 Platforms
-st.subheader("📂 Step 1: Upload Platform Reports")
+# Platform File Upload Section
+st.subheader("📁 E-COMMERCE PLATFORMS")
 p_col1, p_col2, p_col3 = st.columns(3)
 
 with p_col1:
-    st.markdown("### 🟠 Meesho")
-    m_sales = st.file_uploader("Meesho TCS Sales (Excel/CSV)", type=["xlsx", "xls", "csv"], key="ms")
-    m_return = st.file_uploader("Meesho TCS Return (Excel/CSV)", type=["xlsx", "xls", "csv"], key="mr")
+    st.markdown("### 🟣 Meesho (B2C)")
+    m_sales = st.file_uploader("Upload tcs_sales.xlsx", type=["xlsx", "xls", "csv"], key="ms")
+    m_return = st.file_uploader("Upload tcs_sales_return.xlsx", type=["xlsx", "xls", "csv"], key="mr")
+    m_invoice = st.file_uploader("Upload Tax_invoice_details.xlsx (Optional)", type=["xlsx", "xls", "csv"], key="mi")
 
 with p_col2:
-    st.markdown("### 🔵 Flipkart")
-    fk_file = st.file_uploader("Flipkart GST Report (7A/7B Multi-sheet)", type=["xlsx", "xls"], key="fk")
+    st.markdown("### 🟡 Flipkart (B2C/B2B)")
+    fk_file = st.file_uploader("Upload Flipkart GST Report (7A/7B)", type=["xlsx", "xls"], key="fk")
 
 with p_col3:
-    st.markdown("### 🟡 Amazon")
-    az_file = st.file_uploader("Amazon B2C Report (Excel/CSV)", type=["xlsx", "xls", "csv"], key="az")
+    st.markdown("### 🟠 Amazon (B2C)")
+    az_file = st.file_uploader("Upload Amazon MTR / B2C Report", type=["xlsx", "xls", "csv"], key="az")
 
 processed_rows = []
 
-# 1. Process Meesho
+# Process Meesho
 if m_sales is not None:
     try:
-        ms_df = pd.read_excel(m_sales) if m_sales.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_sales)
-        ms_df.columns = ms_df.columns.str.strip().str.lower()
-        
-        for _, r in ms_df.iterrows():
-            gross = float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0)
-            rate = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
-            state = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
-            if state and abs(gross) > 0.001:
-                processed_rows.append({"Platform": "Meesho", "Gross": gross, "Return": 0.0, "Rate": rate, "State": state})
-
+        df_s = pd.read_excel(m_sales) if m_sales.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_sales)
+        df_s.columns = df_s.columns.str.strip().str.lower()
+        for _, r in df_s.iterrows():
+            g = float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0)
+            rt = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
+            st_name = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
+            if st_name and abs(g) > 0.001:
+                processed_rows.append({"Platform": "Meesho", "Gross": g, "Return": 0.0, "Rate": rt, "State": st_name})
         if m_return is not None:
-            mr_df = pd.read_excel(m_return) if m_return.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_return)
-            mr_df.columns = mr_df.columns.str.strip().str.lower()
-            for _, r in mr_df.iterrows():
-                ret_val = abs(float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0))
-                rate = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
-                state = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
-                if state and abs(ret_val) > 0.001:
-                    processed_rows.append({"Platform": "Meesho", "Gross": 0.0, "Return": ret_val, "Rate": rate, "State": state})
+            df_r = pd.read_excel(m_return) if m_return.name.endswith(('xlsx', 'xls')) else pd.read_csv(m_return)
+            df_r.columns = df_r.columns.str.strip().str.lower()
+            for _, r in df_r.iterrows():
+                ret = abs(float(pd.to_numeric(r.get('total_taxable_sale_value', r.get('gross amount', 0)), errors='coerce') or 0))
+                rt = float(pd.to_numeric(r.get('gst_rate', r.get('rate', 0)), errors='coerce') or 0)
+                st_name = str(r.get('end_customer_state_new', r.get('customer state', ''))).strip()
+                if st_name and abs(ret) > 0.001:
+                    processed_rows.append({"Platform": "Meesho", "Gross": 0.0, "Return": ret, "Rate": rt, "State": st_name})
     except Exception as e:
-        st.error(f"Meesho File Error: {e}")
+        st.error(f"Meesho Error: {e}")
 
-# 2. Process Flipkart
+# Process Flipkart
 if fk_file is not None:
     try:
         xl = pd.ExcelFile(fk_file)
-        
-        # Process 7(B) Sheet (Inter-state)
-        sheet_7b = [s for s in xl.sheet_names if "7(B)" in s or "7(B)(2)" in s]
-        if sheet_7b:
-            raw_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], header=None)
-            
-            header_idx = 0
-            for idx, row_vals in raw_7b.head(5).iterrows():
-                row_str = " ".join([str(v).lower() for v in row_vals])
-                if "rate" in row_str or "taxable" in row_str:
-                    header_idx = idx
-                    break
-            
-            df_7b = pd.read_excel(fk_file, sheet_name=sheet_7b[0], skiprows=header_idx)
-            
+        s_7b = [s for s in xl.sheet_names if "7(B)" in s or "7(B)(2)" in s]
+        if s_7b:
+            raw_7b = pd.read_excel(fk_file, sheet_name=s_7b[0], header=None)
+            h_idx = 0
+            for idx, rw in raw_7b.head(5).iterrows():
+                if any(x in " ".join([str(v).lower() for v in rw]) for x in ["rate", "taxable"]):
+                    h_idx = idx; break
+            df_7b = pd.read_excel(fk_file, sheet_name=s_7b[0], skiprows=h_idx)
             for _, r in df_7b.iterrows():
-                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0) if len(r) > 1 else 0
-                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0) if len(r) > 2 else 0
-                rate = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0) if len(r) > 4 else 0
-                
-                state = ""
-                for col_idx in [8, 9, 10, 7]:
-                    if len(r) > col_idx:
-                        val = str(r.iloc[col_idx]).strip()
-                        if val and val.upper() not in ["NAN", "NONE", "0", "0.0"]:
-                            state = val
-                            break
-                
-                if not state:
-                    state = "Delhi"
+                g = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
+                ret = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0)
+                rt = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0)
+                st_val = ""
+                for ci in [8, 9, 10, 7]:
+                    if len(r) > ci and str(r.iloc[ci]).strip().upper() not in ["NAN", "NONE", "0", "0.0", ""]:
+                        st_val = str(r.iloc[ci]).strip(); break
+                if abs(g) > 0.001 or abs(ret) > 0.001:
+                    processed_rows.append({"Platform": "Flipkart", "Gross": g, "Return": ret, "Rate": rt, "State": st_val or "Delhi"})
 
-                if (abs(gross) > 0.001 or abs(returns) > 0.001):
-                    processed_rows.append({"Platform": "Flipkart", "Gross": gross, "Return": returns, "Rate": rate, "State": state})
-
-        # Process 7(A) Sheet (Intra-state)
-        sheet_7a = [s for s in xl.sheet_names if "7(A)" in s or "7(A)(2)" in s]
-        if sheet_7a:
-            raw_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0], header=None)
-            header_idx_a = 0
-            for idx, row_vals in raw_7a.head(5).iterrows():
-                row_str = " ".join([str(v).lower() for v in row_vals])
-                if "rate" in row_str or "taxable" in row_str:
-                    header_idx_a = idx
-                    break
-                    
-            df_7a = pd.read_excel(fk_file, sheet_name=sheet_7a[0], skiprows=header_idx_a)
+        s_7a = [s for s in xl.sheet_names if "7(A)" in s or "7(A)(2)" in s]
+        if s_7a:
+            raw_7a = pd.read_excel(fk_file, sheet_name=s_7a[0], header=None)
+            h_idx_a = 0
+            for idx, rw in raw_7a.head(5).iterrows():
+                if any(x in " ".join([str(v).lower() for v in rw]) for x in ["rate", "taxable"]):
+                    h_idx_a = idx; break
+            df_7a = pd.read_excel(fk_file, sheet_name=s_7a[0], skiprows=h_idx_a)
             for _, r in df_7a.iterrows():
-                gross = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0) if len(r) > 1 else 0
-                returns = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0) if len(r) > 2 else 0
-                cgst_r = float(pd.to_numeric(r.iloc[4], errors='coerce') or 0) if len(r) > 4 else 0
-                sgst_r = float(pd.to_numeric(r.iloc[6], errors='coerce') or 0) if len(r) > 6 else 0
-                rate = cgst_r + sgst_r
-                state = "Delhi"
-                if abs(gross) > 0.001 or abs(returns) > 0.001:
-                    processed_rows.append({"Platform": "Flipkart", "Gross": gross, "Return": returns, "Rate": rate, "State": state})
+                g = float(pd.to_numeric(r.iloc[1], errors='coerce') or 0)
+                ret = float(pd.to_numeric(r.iloc[2], errors='coerce') or 0)
+                rt = (float(pd.to_numeric(r.iloc[4], errors='coerce') or 0)) + (float(pd.to_numeric(r.iloc[6], errors='coerce') or 0))
+                if abs(g) > 0.001 or abs(ret) > 0.001:
+                    processed_rows.append({"Platform": "Flipkart", "Gross": g, "Return": ret, "Rate": rt, "State": "Delhi"})
     except Exception as e:
-        st.error(f"Flipkart File Error: {e}")
+        st.error(f"Flipkart Error: {e}")
 
-# 3. Process Amazon
+# Process Amazon
 if az_file is not None:
     try:
         az_df = pd.read_excel(az_file) if az_file.name.endswith(('xlsx', 'xls')) else pd.read_csv(az_file)
         for _, r in az_df.iterrows():
-            trans_type = str(r.iloc[3]).strip() if len(r) > 3 else ""
+            ttype = str(r.iloc[3]).strip() if len(r) > 3 else ""
             val = float(pd.to_numeric(r.iloc[28], errors='coerce') or 0) if len(r) > 28 else 0.0
-            rate = float(pd.to_numeric(r.iloc[33], errors='coerce') or 0) * 100 if len(r) > 33 else 0.0
-            state = str(r.iloc[24]).strip() if len(r) > 24 else ""
-            
-            if state and trans_type in ["Shipment", "Refund", "Cancel"]:
-                if trans_type == "Shipment":
-                    processed_rows.append({"Platform": "Amazon", "Gross": val, "Return": 0.0, "Rate": rate, "State": state})
-                elif trans_type == "Refund":
-                    processed_rows.append({"Platform": "Amazon", "Gross": 0.0, "Return": abs(val), "Rate": rate, "State": state})
-                elif trans_type == "Cancel":
-                    processed_rows.append({"Platform": "Amazon", "Gross": val, "Return": 0.0, "Rate": rate, "State": state})
+            rt = float(pd.to_numeric(r.iloc[33], errors='coerce') or 0) * 100 if len(r) > 33 else 0.0
+            st_val = str(r.iloc[24]).strip() if len(r) > 24 else ""
+            if st_val and ttype in ["Shipment", "Refund", "Cancel"]:
+                if ttype in ["Shipment", "Cancel"]:
+                    processed_rows.append({"Platform": "Amazon", "Gross": val, "Return": 0.0, "Rate": rt, "State": st_val})
+                elif ttype == "Refund":
+                    processed_rows.append({"Platform": "Amazon", "Gross": 0.0, "Return": abs(val), "Rate": rt, "State": st_val})
     except Exception as e:
-        st.error(f"Amazon File Error: {e}")
+        st.error(f"Amazon Error: {e}")
 
-# Master Display & Reports
+# Data Aggregation & GSTR Tables
 if len(processed_rows) > 0:
-    master_df = pd.DataFrame(processed_rows)
-    master_df['Net Taxable'] = master_df['Gross'] - master_df['Return']
-    master_df = master_df[master_df['Net Taxable'].abs() > 0.001].copy()
+    mdf = pd.DataFrame(processed_rows)
+    mdf['Net'] = mdf['Gross'] - mdf['Return']
+    mdf = mdf[mdf['Net'].abs() > 0.001].copy()
 
-    def enrich_row(row):
-        code, st_proper = clean_state_info(row['State'])
-        supply = "INTRA" if code == "07" or "DELHI" in st_proper.upper() else "INTER"
-        ecomm_gstin = PLATFORM_GSTIN_MAP.get(row['Platform'], "")
-        return pd.Series([code, st_proper, supply, ecomm_gstin], index=['StateCode', 'CleanState', 'SupplyType', 'EcommGSTIN'])
+    def map_row(r):
+        code, s_name = clean_state_info(r['State'])
+        sp_type = "INTRA" if code == home_state_code else "INTER"
+        ecom_id = PLATFORM_ECOMM_GSTIN.get(r['Platform'], "")
+        return pd.Series([code, s_name, sp_type, ecom_id], index=['StateCode', 'StateName', 'SupplyType', 'EcommGSTIN'])
 
-    master_df[['StateCode', 'CleanState', 'SupplyType', 'EcommGSTIN']] = master_df.apply(enrich_row, axis=1)
+    mdf[['StateCode', 'StateName', 'SupplyType', 'EcommGSTIN']] = mdf.apply(map_row, axis=1)
+    mdf['Tax'] = (mdf['Net'] * mdf['Rate'] / 100).round(2)
+    mdf['IGST'] = mdf.apply(lambda r: r['Tax'] if r['SupplyType'] == "INTER" else 0.0, axis=1)
+    mdf['CGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
+    mdf['SGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
 
-    master_df['TaxAmount'] = (master_df['Net Taxable'] * master_df['Rate'] / 100).round(2)
-    master_df['IGST'] = master_df.apply(lambda r: r['TaxAmount'] if r['SupplyType'] == "INTER" else 0.0, axis=1)
-    master_df['CGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
-    master_df['SGST'] = master_df.apply(lambda r: round(r['TaxAmount']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
+    # Table 7: B2CS Aggregation
+    t7 = mdf.groupby(['SupplyType', 'StateCode', 'StateName', 'Rate'], dropna=False).agg({
+        'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
+    }).reset_index().round(2)
+    t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
 
-    # Table 1: State-wise Breakup
-    t1 = master_df.groupby(['SupplyType', 'StateCode', 'CleanState', 'Rate'], dropna=False).agg({
-        'Net Taxable': 'sum',
-        'IGST': 'sum',
-        'CGST': 'sum',
-        'SGST': 'sum'
-    }).reset_index()
-    t1['Place Of Supply (POS)'] = t1['StateCode'] + "-" + t1['CleanState']
-    t1 = t1[['SupplyType', 'Place Of Supply (POS)', 'Rate', 'Net Taxable', 'IGST', 'CGST', 'SGST']].round(2)
-
-    t1_total = pd.DataFrame([{
-        'SupplyType': 'Grand Total',
-        'Place Of Supply (POS)': '',
-        'Rate': '',
-        'Net Taxable': round(t1['Net Taxable'].sum(), 2),
-        'IGST': round(t1['IGST'].sum(), 2),
-        'CGST': round(t1['CGST'].sum(), 2),
-        'SGST': round(t1['SGST'].sum(), 2)
-    }])
-    t1_display = pd.concat([t1, t1_total], ignore_index=True)
-
-    # Table 2: Platform Summary
-    t2 = master_df.groupby(['Platform', 'SupplyType'], dropna=False).agg({
-        'Net Taxable': 'sum',
-        'IGST': 'sum',
-        'CGST': 'sum',
-        'SGST': 'sum'
+    # Table 14: E-Commerce Operator Supplies Summary
+    t14 = mdf.groupby(['Platform', 'EcommGSTIN'], dropna=False).agg({
+        'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
     }).reset_index().round(2)
 
-    t2_total = pd.DataFrame([{
-        'Platform': 'Grand Total',
-        'SupplyType': '',
-        'Net Taxable': round(t2['Net Taxable'].sum(), 2),
-        'IGST': round(t2['IGST'].sum(), 2),
-        'CGST': round(t2['CGST'].sum(), 2),
-        'SGST': round(t2['SGST'].sum(), 2)
-    }])
-    t2_display = pd.concat([t2, t2_total], ignore_index=True)
+    # UI Display
+    st.divider()
+    st.subheader("📑 7 - B2CS (OTHERS)")
+    st.dataframe(t7[['SupplyType', 'Place Of Supply', 'Rate', 'Net', 'IGST', 'CGST', 'SGST']].rename(columns={'Net': 'Taxable Value (₹)'}), use_container_width=True)
 
-    # Table 3: GSTR-1 B2CS Final Format (Exact Match to Offline Utility Table)
-    b2cs_export = t1.copy()
-    b2cs_export['Type'] = "OE"
-    b2cs_export['Applicable % of Tax Rate'] = ""
-    b2cs_export['Cess Amount'] = ""
-    b2cs_export['E-Commerce GSTIN'] = ""
-    b2cs_export = b2cs_export[['Type', 'Place Of Supply (POS)', 'Rate', 'Applicable % of Tax Rate', 'Net Taxable', 'Cess Amount', 'E-Commerce GSTIN']]
-    b2cs_export.rename(columns={'Place Of Supply (POS)': 'Place Of Supply', 'Net Taxable': 'Taxable Value'}, inplace=True)
+    st.subheader("🏢 14 - SUPPLIES MADE THROUGH E-COMMERCE OPERATORS U/S 52")
+    st.dataframe(t14.rename(columns={'Net': 'Net Value of Supplies (₹)'}), use_container_width=True)
+
+    # Official GST Portal Compatible JSON Generation
+    b2cs_json_list = []
+    for _, r in t7.iterrows():
+        entry = {
+            "sply_ty": r['SupplyType'],
+            "pos": str(r['StateCode']).zfill(2),
+            "typ": "OE",
+            "rt": float(r['Rate']),
+            "txval": float(r['Net']),
+            "csamt": 0.0
+        }
+        if r['SupplyType'] == "INTER":
+            entry["iamt"] = float(r['IGST'])
+        else:
+            entry["camt"] = float(r['CGST'])
+            entry["samt"] = float(r['SGST'])
+        b2cs_json_list.append(entry)
+
+    ecom_json_list = []
+    for _, r in t14.iterrows():
+        ecom_json_list.append({
+            "etin": str(r['EcommGSTIN']),
+            "txval": float(r['Net']),
+            "iamt": float(r['IGST']),
+            "camt": float(r['CGST']),
+            "samt": float(r['SGST']),
+            "csamt": 0.0
+        })
+
+    official_portal_json = {
+        "gstin": active_gstin,
+        "fp": fp_code,
+        "gt": 0.0,
+        "cur_gt": 0.0,
+        "b2cs": b2cs_json_list,
+        "sec_14": {
+            "ecom_supplies": ecom_json_list
+        }
+    }
+
+    # B2CS Offline Excel Format (Single Sheet)
+    b2cs_excel = pd.DataFrame({
+        'Type': 'OE',
+        'Place Of Supply': t7['Place Of Supply'],
+        'Rate': t7['Rate'],
+        'Applicable % of Tax Rate': '',
+        'Taxable Value': t7['Net'],
+        'Cess Amount': '',
+        'E-Commerce GSTIN': ''
+    })
 
     st.divider()
-    st.header("📊 GSTR-3B ADVANCE CONTROL REPORT (SIDE-BY-SIDE SUMMARY)")
+    st.subheader("📥 Download Return File")
+    d_col1, d_col2 = st.columns(2)
 
-    tab_col1, tab_col2 = st.columns([3, 2])
-    with tab_col1:
-        st.subheader("🔵 Table 1: State-wise POS Breakdown")
-        st.dataframe(t1_display.style.format({
-            'Net Taxable': '{:,.2f}',
-            'IGST': '{:,.2f}',
-            'CGST': '{:,.2f}',
-            'SGST': '{:,.2f}'
-        }), use_container_width=True)
+    buf_excel = io.BytesIO()
+    with pd.ExcelWriter(buf_excel, engine='openpyxl') as writer:
+        b2cs_excel.to_excel(writer, index=False, sheet_name='b2cs')
 
-    with tab_col2:
-        st.subheader("🔴 Table 2: Platform Summary (INTER / INTRA)")
-        st.dataframe(t2_display.style.format({
-            'Net Taxable': '{:,.2f}',
-            'IGST': '{:,.2f}',
-            'CGST': '{:,.2f}',
-            'SGST': '{:,.2f}'
-        }), use_container_width=True)
-
-    st.divider()
-    st.header("📑 Table 7: GSTR-1 B2CS Final Table")
-    st.dataframe(b2cs_export, use_container_width=True)
-
-    # Export Downloads (Single Sheet Clean B2CS for GST Offline Tool)
-    st.divider()
-    st.subheader("📥 Export & Download Master Files")
-    d1, d2, d3 = st.columns(3)
-
-    # 1. Single Sheet Clean Excel File (Exact format matching offline tool)
-    excel_buf = io.BytesIO()
-    with pd.ExcelWriter(excel_buf, engine='openpyxl') as writer:
-        b2cs_export.to_excel(writer, index=False, sheet_name='GSTR1_B2CS_Final')
-    
-    d1.download_button(
-        "📊 Download GSTR-1 B2CS Excel",
-        data=excel_buf.getvalue(),
-        file_name=f"GSTR1_B2CS_{return_period}.xlsx",
+    d_col1.download_button(
+        "📊 GSTR-1 Excel",
+        data=buf_excel.getvalue(),
+        file_name=f"GSTR1_{active_gstin}_{fp_code}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
-    # 2. Clean CSV File
-    csv_buf = io.StringIO()
-    b2cs_export.to_csv(csv_buf, index=False)
-    d2.download_button(
-        "📄 Download GSTR-1 B2CS CSV",
-        data=csv_buf.getvalue(),
-        file_name="GSTR1_B2CS_Final_Clean.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-
-    # 3. Direct Offline Utility JSON File
-    json_b2cs_list = []
-    for _, r in t1.iterrows():
-        pos_c = str(r['Place Of Supply (POS)']).split('-')[0].strip()
-        json_b2cs_list.append({
-            "sply_ty": r['SupplyType'],
-            "rt": float(r['Rate']),
-            "typ": "OE",
-            "pos": str(pos_c).zfill(2),
-            "txval": round(float(r['Net Taxable']), 2),
-            "iamt": round(float(r['IGST']), 2)
-        })
-
-    json_payload = {
-        "gstin": client_gstin,
-        "fp": return_period,
-        "gt": 0,
-        "cur_gt": 0,
-        "b2cs": json_b2cs_list
-    }
-
-    d3.download_button(
-        "📦 Download GSTR-1 JSON File",
-        data=json.dumps(json_payload, indent=2),
-        file_name=f"GSTR1_{client_gstin}_{return_period}.json",
+    d_col2.download_button(
+        "📦 GSTR-1 JSON (100% Portal Compatible)",
+        data=json.dumps(official_portal_json, indent=4),
+        file_name=f"GSTR1_{active_gstin}_{fp_code}.json",
         mime="application/json",
         use_container_width=True
     )
