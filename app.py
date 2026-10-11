@@ -48,15 +48,16 @@ components.html("""
 """, height=0, width=0)
 
 STATE_MASTER = {
-    "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"), "HIMACHAL PRADESH": ("02", "Himachal Pradesh"),
-    "PUNJAB": ("03", "Punjab"), "CHANDIGARH": ("04", "Chandigarh"), "UTTARAKHAND": ("05", "Uttarakhand"),
-    "HARYANA": ("06", "Haryana"), "DELHI": ("07", "Delhi"), "RAJASTHAN": ("08", "Rajasthan"),
-    "UTTAR PRADESH": ("09", "Uttar Pradesh"), "BIHAR": ("10", "Bihar"), "SIKKIM": ("11", "Sikkim"),
-    "ARUNACHAL PRADESH": ("12", "Arunachal Pradesh"), "NAGALAND": ("13", "Nagaland"), "MANIPUR": ("14", "Manipur"),
-    "MIZORAM": ("15", "Mizoram"), "TRIPURA": ("16", "Tripura"), "MEGHALAYA": ("17", "Meghalaya"),
-    "ASSAM": ("18", "Assam"), "WEST BENGAL": ("19", "West Bengal"), "JHARKHAND": ("20", "Jharkhand"),
-    "ODISHA": ("21", "Odisha"), "CHHATTISGARH": ("22", "Chhattisgarh"), "MADHYA PRADESH": ("23", "Madhya Pradesh"),
-    "GUJARAT": ("24", "Gujarat"), "DAMAN AND DIU": ("25", "Daman and Diu"), "DADRA AND NAGAR HAVELI": ("26", "Dadra and Nagar Haveli"),
+    "JAMMU AND KASHMIR": ("01", "Jammu and Kashmir"), "JAMMU & KASHMIR": ("01", "Jammu and Kashmir"),
+    "HIMACHAL PRADESH": ("02", "Himachal Pradesh"), "PUNJAB": ("03", "Punjab"), "CHANDIGARH": ("04", "Chandigarh"),
+    "UTTARAKHAND": ("05", "Uttarakhand"), "HARYANA": ("06", "Haryana"), "DELHI": ("07", "Delhi"),
+    "RAJASTHAN": ("08", "Rajasthan"), "UTTAR PRADESH": ("09", "Uttar Pradesh"), "BIHAR": ("10", "Bihar"),
+    "SIKKIM": ("11", "Sikkim"), "ARUNACHAL PRADESH": ("12", "Arunachal Pradesh"), "NAGALAND": ("13", "Nagaland"),
+    "MANIPUR": ("14", "Manipur"), "MIZORAM": ("15", "Mizoram"), "TRIPURA": ("16", "Tripura"),
+    "MEGHALAYA": ("17", "Meghalaya"), "ASSAM": ("18", "Assam"), "WEST BENGAL": ("19", "West Bengal"),
+    "JHARKHAND": ("20", "Jharkhand"), "ODISHA": ("21", "Odisha"), "CHHATTISGARH": ("22", "Chhattisgarh"),
+    "MADHYA PRADESH": ("23", "Madhya Pradesh"), "GUJARAT": ("24", "Gujarat"), "DAMAN AND DIU": ("25", "Daman and Diu"),
+    "DADRA AND NAGAR HAVELI": ("26", "Dadra and Nagar Haveli"),
     "DADRA AND NAGAR HAVELI AND DAMAN AND DIU": ("26", "Dadra and Nagar Haveli and Daman and Diu"),
     "MAHARASHTRA": ("27", "Maharashtra"), "ANDHRA PRADESH": ("37", "Andhra Pradesh"), "KARNATAKA": ("29", "Karnataka"),
     "GOA": ("30", "Goa"), "LAKSHADWEEP": ("31", "Lakshadweep"), "KERALA": ("32", "Kerala"), "TAMIL NADU": ("33", "Tamil Nadu"),
@@ -76,18 +77,13 @@ PLATFORM_ECOMM_GSTIN = {
 def clean_state_info(raw_state):
     st_clean = str(raw_state).upper().strip()
     if not st_clean or st_clean in ["NAN", "NONE", "NULL"]:
-        return "00", "Unknown"
+        return "07", "Delhi"
     
-    # Check for prefix digits (e.g., "07-Delhi" or "34-Puducherry")
-    code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
-    if code_match:
-        c_code = code_match.group(1).zfill(2)
-        # If code is valid and not "00", map from code
-        if c_code != "00" and c_code in CODE_TO_STATE:
-            return CODE_TO_STATE[c_code]
-        st_clean = code_match.group(2).strip()
-
-    # Specific name checks
+    # Specific name checks prior to digits (solves 00-Jammu & Kashmir issue)
+    if "JAMMU" in st_clean or "KASHMIR" in st_clean:
+        return "01", "Jammu and Kashmir"
+    if "LADAKH" in st_clean:
+        return "38", "Ladakh"
     if "ANDAMAN" in st_clean:
         return "35", "Andaman and Nicobar Islands"
     if "PUDU" in st_clean or "PONDI" in st_clean:
@@ -102,8 +98,16 @@ def clean_state_info(raw_state):
         return "22", "Chhattisgarh"
     if "ODISHA" in st_clean or "ORISSA" in st_clean:
         return "21", "Odisha"
+
+    # Check for prefix digits (e.g., "07-Delhi" or "34-Puducherry")
+    code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
+    if code_match:
+        c_code = code_match.group(1).zfill(2)
+        if c_code != "00" and c_code in CODE_TO_STATE:
+            return CODE_TO_STATE[c_code]
+        st_clean = code_match.group(2).strip()
         
-    return STATE_MASTER.get(st_clean, ("00", st_clean.title()))
+    return STATE_MASTER.get(st_clean, ("07", "Delhi"))
 
 st.title("💼 GST Online Seller - Return Generator")
 c1, c2, c3 = st.columns([2, 1, 1])
@@ -235,6 +239,10 @@ if len(processed_rows) > 0:
     t7 = mdf.groupby(['SupplyType', 'StateCode', 'StateName', 'Rate'], dropna=False).agg({
         'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
     }).reset_index().round(2)
+    
+    # FILTER OUT ZERO OR NEGATIVE TAXABLE VALUE (Portal Validation Fix)
+    t7 = t7[t7['Net'] > 0].copy()
+    
     t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
 
     t14 = mdf.groupby(['Platform', 'EcommGSTIN'], dropna=False).agg({
@@ -280,7 +288,7 @@ if len(processed_rows) > 0:
         'Rate': t7['Rate'],
         'Applicable % of Tax Rate': '',
         'Taxable Value': t7['Net'],
-        'Cess Amount': '',
+        'Cess Amount': 0.0,
         'E-Commerce GSTIN': ''
     })
 
