@@ -4,9 +4,6 @@ import pandas as pd
 import json
 import io
 import re
-import zipfile
-import random
-from PIL import Image
 
 st.set_page_config(page_title="GST Online Seller Automation", page_icon="⚖️", layout="wide")
 
@@ -316,79 +313,123 @@ if len(processed_rows) > 0:
     )
 
 # ==========================================
-# 📸 MEESHO PRODUCT IMAGE GENERATOR SECTION
+# 📸 MEESHO PRODUCT IMAGE GENERATOR (LIGHTWEIGHT & FAST)
 # ==========================================
 st.divider()
 st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 VARIATIONS)")
-st.caption("अपनी प्रोडक्ट फोटो अपलोड करें। यह 50 अलग-अलग सॉलिड कलर्स और वेरिएशन के साथ ZIP फ़ाइल बना देगा।")
+st.caption("पारदर्शी (Transparent PNG) या प्लेन बैकग्राउंड वाली प्रोडक्ट फ़ोटो चुनें। यह सीधे ब्राउज़र में बिना सर्वर अटके 3 सेकंड में 50 अलग-अलग सॉलिड कलर्स की ZIP फ़ाइल बना देगा।")
 
-uploaded_meesho_img = st.file_uploader("Meesho Product Photo चुनें (JPG / PNG)", type=["jpg", "jpeg", "png"], key="meesho_img_uploader")
+components.html("""
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; background: transparent; margin: 0; padding: 10px 0; }
+    .box { background: #1e2129; border: 1px solid #313543; border-radius: 8px; padding: 20px; max-width: 600px; }
+    input[type="file"] { background: #0e1117; border: 1px dashed #444; padding: 12px; border-radius: 6px; width: 95%; color: #bbb; cursor: pointer; }
+    button { background: #ff4b4b; color: white; border: none; padding: 12px 24px; font-size: 15px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 15px; width: 100%; transition: 0.2s; }
+    button:hover { background: #e03a3a; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    #pbox { display: none; margin-top: 15px; }
+    .pbar { background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 6px; }
+    .pfill { background: #00c853; height: 100%; width: 0%; transition: width 0.1s; }
+    #preview { max-width: 150px; max-height: 150px; margin-top: 12px; border-radius: 6px; display: none; border: 1px solid #444; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <input type="file" id="imgInp" accept="image/*" onchange="previewImg(event)">
+    <center><img id="preview"></center>
+    <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Image Variations (ZIP)</button>
+    <div id="pbox">
+      <div id="stxt" style="font-size: 13px; color: #aaa;">प्रोसेसिंग...</div>
+      <div class="pbar"><div class="pfill" id="pfill"></div></div>
+    </div>
+  </div>
 
-if uploaded_meesho_img is not None:
-    st.image(uploaded_meesho_img, caption="अपलोड की गई इमेज", width=200)
+  <script>
+    const COLORS = [
+      "#FFFFFF", "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6",
+      "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6",
+      "#F0FFF0", "#E6F3E6", "#D8EED8", "#E0F2F1", "#E8F5E9",
+      "#F0F8FF", "#E3F2FD", "#E1F5FE", "#E0F7FA", "#EDE7F6",
+      "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE", "#FFF3E0",
+      "#FFF8E1", "#FFFDE7", "#F9FBE7", "#EFEBE9", "#ECEFF1",
+      "#D7CCC8", "#CFD8DC", "#B0BEC5", "#B2DFDB", "#C8E6C9",
+      "#DCEDC8", "#F0F4C3", "#FFF9C4", "#FFECB3", "#FFE0B2",
+      "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
+      "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
+    ];
 
-    if st.button("🚀 Generate 50 Image Variations", type="primary"):
-        prog_bar = st.progress(0)
-        status = st.empty()
+    function previewImg(e) {
+      const p = document.getElementById('preview');
+      if (e.target.files && e.target.files[0]) {
+        p.src = URL.createObjectURL(e.target.files[0]);
+        p.style.display = 'block';
+      }
+    }
 
-        status.text("AI मॉडल लोड हो रहा है और बैकग्राउंड हटाया जा रहा है...")
-        try:
-            # Lazy Import: इससे पेज शुरू में बिना किसी लैग या क्रैश के लोड होगा
-            from rembg import remove
-            
-            img_bytes = uploaded_meesho_img.read()
-            no_bg_bytes = remove(img_bytes)
-            subject_img = Image.open(io.BytesIO(no_bg_bytes)).convert("RGBA")
+    async function runGenerator() {
+      const inp = document.getElementById('imgInp');
+      if (!inp.files || !inp.files[0]) {
+        alert("कृपया पहले प्रोडक्ट की इमेज चुनें!");
+        return;
+      }
+      const btn = document.getElementById('genBtn');
+      const pbox = document.getElementById('pbox');
+      const pfill = document.getElementById('pfill');
+      const stxt = document.getElementById('stxt');
 
-            SOLID_COLORS = [
-                "#FFFFFF", "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6",
-                "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6",
-                "#F0FFF0", "#E6F3E6", "#D8EED8", "#E0F2F1", "#E8F5E9",
-                "#F0F8FF", "#E3F2FD", "#E1F5FE", "#E0F7FA", "#EDE7F6",
-                "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE", "#FFF3E0",
-                "#FFF8E1", "#FFFDE7", "#F9FBE7", "#EFEBE9", "#ECEFF1",
-                "#D7CCC8", "#CFD8DC", "#B0BEC5", "#B2DFDB", "#C8E6C9",
-                "#DCEDC8", "#F0F4C3", "#FFF9C4", "#FFECB3", "#FFE0B2",
-                "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
-                "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
-            ]
+      btn.disabled = true;
+      pbox.style.display = 'block';
 
-            CANVAS_SIZE = (1000, 1000)
-            zip_buffer = io.BytesIO()
+      const img = new Image();
+      img.src = URL.createObjectURL(inp.files[0]);
+      await new Promise(r => { img.onload = r; });
 
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                for i, hex_color in enumerate(SOLID_COLORS, start=1):
-                    status.text(f"इमेज तैयार हो रही है... ({i}/50)")
+      const zip = new JSZip();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const SIZE = 1000;
+      canvas.width = SIZE;
+      canvas.height = SIZE;
 
-                    bg = Image.new("RGB", CANVAS_SIZE, hex_color)
+      for (let i = 0; i < COLORS.length; i++) {
+        ctx.fillStyle = COLORS[i];
+        ctx.fillRect(0, 0, SIZE, SIZE);
 
-                    scale = random.uniform(0.72, 0.82)
-                    max_w = int(CANVAS_SIZE[0] * scale)
-                    max_h = int(CANVAS_SIZE[1] * scale)
+        const scale = 0.72 + (Math.random() * 0.10);
+        const maxW = SIZE * scale;
+        const maxH = SIZE * scale;
 
-                    img_copy = subject_img.copy()
-                    img_copy.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+        let w = img.width;
+        let h = img.height;
+        const ratio = Math.min(maxW / w, maxH / h);
+        w *= ratio;
+        h *= ratio;
 
-                    offset_x = (CANVAS_SIZE[0] - img_copy.width) // 2
-                    offset_y = (CANVAS_SIZE[1] - img_copy.height) // 2
+        const x = (SIZE - w) / 2;
+        const y = (SIZE - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
 
-                    bg.paste(img_copy, (offset_x, offset_y), mask=img_copy)
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.90));
+        zip.file(`meesho_var_${String(i + 1).padStart(2, '0')}.jpg`, blob);
 
-                    img_out_buf = io.BytesIO()
-                    bg.save(img_out_buf, format="JPEG", quality=90, optimize=True)
-                    zip_file.writestr(f"meesho_var_{i:02d}.jpg", img_out_buf.getvalue())
+        const prg = Math.round(((i + 1) / COLORS.length) * 100);
+        pfill.style.width = prg + '%';
+        stxt.innerText = `जनरेट हो रहा है: ${i + 1} / 50...`;
+      }
 
-                    prog_bar.progress(i / len(SOLID_COLORS))
+      stxt.innerText = "ZIP फ़ाइल डाउनलोड हो रही है...";
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "meesho_variations.zip");
 
-            status.success("✅ सभी 50 फोटो तैयार हो चुकी हैं!")
-            zip_buffer.seek(0)
-
-            st.download_button(
-                label="📥 Download 50 Images (ZIP)",
-                data=zip_buffer,
-                file_name="meesho_variations.zip",
-                mime="application/zip",
-                type="primary"
-            )
-        except Exception as ex:
-            st.error(f"एरर आया: {ex}")
+      stxt.innerText = "✅ 50 फोटो सफलतापूर्वक डाउनलोड हो गईं!";
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>
+""", height=440)
