@@ -7,7 +7,6 @@ import re
 import zipfile
 import random
 from PIL import Image
-from rembg import remove
 
 st.set_page_config(page_title="GST Online Seller Automation", page_icon="⚖️", layout="wide")
 
@@ -83,7 +82,6 @@ def clean_state_info(raw_state):
     if not st_clean or st_clean in ["NAN", "NONE", "NULL"]:
         return "07", "Delhi"
     
-    # Specific name checks prior to digits (solves 00-Jammu & Kashmir issue)
     if "JAMMU" in st_clean or "KASHMIR" in st_clean:
         return "01", "Jammu and Kashmir"
     if "LADAKH" in st_clean:
@@ -103,7 +101,6 @@ def clean_state_info(raw_state):
     if "ODISHA" in st_clean or "ORISSA" in st_clean:
         return "21", "Odisha"
 
-    # Check for prefix digits (e.g., "07-Delhi" or "34-Puducherry")
     code_match = re.match(r"^(\d{1,2})[\s\-_]*(.*)$", st_clean)
     if code_match:
         c_code = code_match.group(1).zfill(2)
@@ -244,9 +241,7 @@ if len(processed_rows) > 0:
         'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
     }).reset_index().round(2)
     
-    # FILTER OUT ZERO OR NEGATIVE TAXABLE VALUE (Portal Validation Fix)
     t7 = t7[t7['Net'] > 0].copy()
-    
     t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
 
     t14 = mdf.groupby(['Platform', 'EcommGSTIN'], dropna=False).agg({
@@ -323,73 +318,77 @@ if len(processed_rows) > 0:
 # ==========================================
 # 📸 MEESHO PRODUCT IMAGE GENERATOR SECTION
 # ==========================================
-st.markdown("---")
-st.markdown("## 📸 Meesho Product Image Generator (50 Solid Colors)")
-st.info("यहाँ प्रोडक्ट इमेज अपलोड करें। AI बैकग्राउंड रिमूव करके 50 अलग-अलग सॉलिड कलर्स और वेरिएशन के साथ ZIP फ़ाइल तैयार कर देगा।")
+st.divider()
+st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 VARIATIONS)")
+st.caption("अपनी प्रोडक्ट फोटो अपलोड करें। यह 50 अलग-अलग सॉलिड कलर्स और वेरिएशन के साथ ZIP फ़ाइल बना देगा।")
 
 uploaded_meesho_img = st.file_uploader("Meesho Product Photo चुनें (JPG / PNG)", type=["jpg", "jpeg", "png"], key="meesho_img_uploader")
 
 if uploaded_meesho_img is not None:
-    st.image(uploaded_meesho_img, caption="अपलोड की गई इमेज", width=220)
+    st.image(uploaded_meesho_img, caption="अपलोड की गई इमेज", width=200)
 
     if st.button("🚀 Generate 50 Image Variations", type="primary"):
         prog_bar = st.progress(0)
         status = st.empty()
 
-        status.text("AI मॉडल से बैकग्राउंड रिमूव किया जा रहा है...")
-        img_bytes = uploaded_meesho_img.read()
-        no_bg_bytes = remove(img_bytes)
-        subject_img = Image.open(io.BytesIO(no_bg_bytes)).convert("RGBA")
+        status.text("AI मॉडल लोड हो रहा है और बैकग्राउंड हटाया जा रहा है...")
+        try:
+            # Lazy Import: इससे पेज शुरू में बिना किसी लैग या क्रैश के लोड होगा
+            from rembg import remove
+            
+            img_bytes = uploaded_meesho_img.read()
+            no_bg_bytes = remove(img_bytes)
+            subject_img = Image.open(io.BytesIO(no_bg_bytes)).convert("RGBA")
 
-        # 50 सॉलिड और न्यूट्रल ई-कॉमर्स कलर्स
-        SOLID_COLORS = [
-            "#FFFFFF", "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6",
-            "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6",
-            "#F0FFF0", "#E6F3E6", "#D8EED8", "#E0F2F1", "#E8F5E9",
-            "#F0F8FF", "#E3F2FD", "#E1F5FE", "#E0F7FA", "#EDE7F6",
-            "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE", "#FFF3E0",
-            "#FFF8E1", "#FFFDE7", "#F9FBE7", "#EFEBE9", "#ECEFF1",
-            "#D7CCC8", "#CFD8DC", "#B0BEC5", "#B2DFDB", "#C8E6C9",
-            "#DCEDC8", "#F0F4C3", "#FFF9C4", "#FFECB3", "#FFE0B2",
-            "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
-            "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
-        ]
+            SOLID_COLORS = [
+                "#FFFFFF", "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6",
+                "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6",
+                "#F0FFF0", "#E6F3E6", "#D8EED8", "#E0F2F1", "#E8F5E9",
+                "#F0F8FF", "#E3F2FD", "#E1F5FE", "#E0F7FA", "#EDE7F6",
+                "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE", "#FFF3E0",
+                "#FFF8E1", "#FFFDE7", "#F9FBE7", "#EFEBE9", "#ECEFF1",
+                "#D7CCC8", "#CFD8DC", "#B0BEC5", "#B2DFDB", "#C8E6C9",
+                "#DCEDC8", "#F0F4C3", "#FFF9C4", "#FFECB3", "#FFE0B2",
+                "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
+                "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
+            ]
 
-        CANVAS_SIZE = (1000, 1000)
-        zip_buffer = io.BytesIO()
+            CANVAS_SIZE = (1000, 1000)
+            zip_buffer = io.BytesIO()
 
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for i, hex_color in enumerate(SOLID_COLORS, start=1):
-                status.text(f"इमेज तैयार हो रही है... ({i}/50)")
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                for i, hex_color in enumerate(SOLID_COLORS, start=1):
+                    status.text(f"इमेज तैयार हो रही है... ({i}/50)")
 
-                bg = Image.new("RGB", CANVAS_SIZE, hex_color)
+                    bg = Image.new("RGB", CANVAS_SIZE, hex_color)
 
-                # 72% से 82% स्केलिंग
-                scale = random.uniform(0.72, 0.82)
-                max_w = int(CANVAS_SIZE[0] * scale)
-                max_h = int(CANVAS_SIZE[1] * scale)
+                    scale = random.uniform(0.72, 0.82)
+                    max_w = int(CANVAS_SIZE[0] * scale)
+                    max_h = int(CANVAS_SIZE[1] * scale)
 
-                img_copy = subject_img.copy()
-                img_copy.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+                    img_copy = subject_img.copy()
+                    img_copy.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
 
-                offset_x = (CANVAS_SIZE[0] - img_copy.width) // 2
-                offset_y = (CANVAS_SIZE[1] - img_copy.height) // 2
+                    offset_x = (CANVAS_SIZE[0] - img_copy.width) // 2
+                    offset_y = (CANVAS_SIZE[1] - img_copy.height) // 2
 
-                bg.paste(img_copy, (offset_x, offset_y), mask=img_copy)
+                    bg.paste(img_copy, (offset_x, offset_y), mask=img_copy)
 
-                img_out_buf = io.BytesIO()
-                bg.save(img_out_buf, format="JPEG", quality=90, optimize=True)
-                zip_file.writestr(f"meesho_var_{i:02d}.jpg", img_out_buf.getvalue())
+                    img_out_buf = io.BytesIO()
+                    bg.save(img_out_buf, format="JPEG", quality=90, optimize=True)
+                    zip_file.writestr(f"meesho_var_{i:02d}.jpg", img_out_buf.getvalue())
 
-                prog_bar.progress(i / len(SOLID_COLORS))
+                    prog_bar.progress(i / len(SOLID_COLORS))
 
-        status.success("✅ सभी 50 फोटो तैयार हो चुकी हैं!")
-        zip_buffer.seek(0)
+            status.success("✅ सभी 50 फोटो तैयार हो चुकी हैं!")
+            zip_buffer.seek(0)
 
-        st.download_button(
-            label="📥 Download 50 Images (ZIP)",
-            data=zip_buffer,
-            file_name="meesho_variations.zip",
-            mime="application/zip",
-            type="primary"
-        )
+            st.download_button(
+                label="📥 Download 50 Images (ZIP)",
+                data=zip_buffer,
+                file_name="meesho_variations.zip",
+                mime="application/zip",
+                type="primary"
+            )
+        except Exception as ex:
+            st.error(f"एरर आया: {ex}")
