@@ -313,11 +313,11 @@ if len(processed_rows) > 0:
     )
 
 # ==========================================
-# 📸 MEESHO PRODUCT IMAGE GENERATOR (LIGHTWEIGHT & FAST)
+# 📸 MEESHO PRODUCT IMAGE GENERATOR (SOLID BACKGROUNDS ONLY)
 # ==========================================
 st.divider()
-st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 VARIATIONS)")
-st.caption("पारदर्शी (Transparent PNG) या प्लेन बैकग्राउंड वाली प्रोडक्ट फ़ोटो चुनें। यह सीधे ब्राउज़र में बिना सर्वर अटके 3 सेकंड में 50 अलग-अलग सॉलिड कलर्स की ZIP फ़ाइल बना देगा।")
+st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 SOLID COLORS)")
+st.caption("पारदर्शी (Transparent PNG) या प्लेन प्रोडक्ट फ़ोटो चुनें। यह बिना किसी पैडिंग बदलाव के सीधे 50 अलग-अलग सॉलिड बैकग्राउंड कलर्स के साथ ZIP फ़ाइल तैयार कर देगा।")
 
 components.html("""
 <!DOCTYPE html>
@@ -362,74 +362,3 @@ components.html("""
       "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
       "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
     ];
-
-    function previewImg(e) {
-      const p = document.getElementById('preview');
-      if (e.target.files && e.target.files[0]) {
-        p.src = URL.createObjectURL(e.target.files[0]);
-        p.style.display = 'block';
-      }
-    }
-
-    async function runGenerator() {
-      const inp = document.getElementById('imgInp');
-      if (!inp.files || !inp.files[0]) {
-        alert("कृपया पहले प्रोडक्ट की इमेज चुनें!");
-        return;
-      }
-      const btn = document.getElementById('genBtn');
-      const pbox = document.getElementById('pbox');
-      const pfill = document.getElementById('pfill');
-      const stxt = document.getElementById('stxt');
-
-      btn.disabled = true;
-      pbox.style.display = 'block';
-
-      const img = new Image();
-      img.src = URL.createObjectURL(inp.files[0]);
-      await new Promise(r => { img.onload = r; });
-
-      const zip = new JSZip();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const SIZE = 1000;
-      canvas.width = SIZE;
-      canvas.height = SIZE;
-
-      for (let i = 0; i < COLORS.length; i++) {
-        ctx.fillStyle = COLORS[i];
-        ctx.fillRect(0, 0, SIZE, SIZE);
-
-        const scale = 0.72 + (Math.random() * 0.10);
-        const maxW = SIZE * scale;
-        const maxH = SIZE * scale;
-
-        let w = img.width;
-        let h = img.height;
-        const ratio = Math.min(maxW / w, maxH / h);
-        w *= ratio;
-        h *= ratio;
-
-        const x = (SIZE - w) / 2;
-        const y = (SIZE - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
-
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.90));
-        zip.file(`meesho_var_${String(i + 1).padStart(2, '0')}.jpg`, blob);
-
-        const prg = Math.round(((i + 1) / COLORS.length) * 100);
-        pfill.style.width = prg + '%';
-        stxt.innerText = `जनरेट हो रहा है: ${i + 1} / 50...`;
-      }
-
-      stxt.innerText = "ZIP फ़ाइल डाउनलोड हो रही है...";
-      const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "meesho_variations.zip");
-
-      stxt.innerText = "✅ 50 फोटो सफलतापूर्वक डाउनलोड हो गईं!";
-      btn.disabled = false;
-    }
-  </script>
-</body>
-</html>
-""", height=440)
