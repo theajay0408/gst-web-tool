@@ -313,11 +313,11 @@ if len(processed_rows) > 0:
     )
 
 # ==========================================
-# MEESHO PRODUCT IMAGE GENERATOR (SOLID BACKGROUNDS)
+# 📸 MEESHO PRODUCT IMAGE GENERATOR (TRUE COLOR VARIATIONS)
 # ==========================================
 st.divider()
 st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 SOLID COLORS)")
-st.caption("Transparent PNG ya plain background wali product image upload karein. Ye bina kisi border padding ke background me 50 alag-alag solid colors ke sath ZIP generate karega.")
+st.caption("प्रोडक्ट इमेज अपलोड करें। यह ऑटोमैटिक वाइट बैकग्राउंड हटाकर 50 अलग-अलग ब्राइट और सॉलिड कलर्स (Red, Blue, Green, Yellow, Pink आदि) के साथ ZIP फ़ाइल बनाएगा।")
 
 html_generator_code = """
 <!DOCTYPE html>
@@ -342,25 +342,26 @@ html_generator_code = """
   <div class="box">
     <input type="file" id="imgInp" accept="image/*" onchange="previewImg(event)">
     <center><img id="preview"></center>
-    <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Image Variations (ZIP)</button>
+    <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Solid Color Variations (ZIP)</button>
     <div id="pbox">
-      <div id="stxt" style="font-size: 13px; color: #aaa;">Processing...</div>
+      <div id="stxt" style="font-size: 13px; color: #aaa;">प्रोसेसिंग...</div>
       <div class="pbar"><div class="pfill" id="pfill"></div></div>
     </div>
   </div>
 
   <script>
-    const COLORS = [
-      "#FFFFFF", "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6",
-      "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6",
-      "#F0FFF0", "#E6F3E6", "#D8EED8", "#E0F2F1", "#E8F5E9",
-      "#F0F8FF", "#E3F2FD", "#E1F5FE", "#E0F7FA", "#EDE7F6",
-      "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE", "#FFF3E0",
-      "#FFF8E1", "#FFFDE7", "#F9FBE7", "#EFEBE9", "#ECEFF1",
-      "#D7CCC8", "#CFD8DC", "#B0BEC5", "#B2DFDB", "#C8E6C9",
-      "#DCEDC8", "#F0F4C3", "#FFF9C4", "#FFECB3", "#FFE0B2",
-      "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
-      "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
+    // 50 अलग-अलग, वाइब्रेंट और साफ़ सॉलिड कलर्स (लाल, नीला, पीला, हरा, बैंगनी, गुलाबी, आदि)
+    const SOLID_COLORS = [
+      "#FF5733", "#33FF57", "#3357FF", "#F39C12", "#9B59B6",
+      "#1ABC9C", "#E74C3C", "#2ECC71", "#3498DB", "#E67E22",
+      "#8E44AD", "#16A085", "#D35400", "#27AE60", "#2980B9",
+      "#F1C40F", "#E91E63", "#00BCD4", "#8BC34A", "#FF9800",
+      "#673AB7", "#3F51B5", "#2196F3", "#009688", "#4CAF50",
+      "#CDDC39", "#FFEB3B", "#FFC107", "#FF5722", "#795548",
+      "#607D8B", "#FF1744", "#D500F9", "#651FFF", "#3D5AFE",
+      "#00E5FF", "#1DE9B6", "#00E676", "#76FF03", "#C6FF00",
+      "#FFEA00", "#FFC400", "#FF9100", "#FF3D00", "#F48FB1",
+      "#CE93D8", "#B39DDB", "#9FA8DA", "#90CAF9", "#80DEEA"
     ];
 
     function previewImg(e) {
@@ -374,7 +375,7 @@ html_generator_code = """
     async function runGenerator() {
       const inp = document.getElementById('imgInp');
       if (!inp.files || !inp.files[0]) {
-        alert("Pehle image select karein!");
+        alert("कृपया पहले इमेज चुनें!");
         return;
       }
       const btn = document.getElementById('genBtn');
@@ -384,37 +385,64 @@ html_generator_code = """
 
       btn.disabled = true;
       pbox.style.display = 'block';
+      stxt.innerText = "सफेद बैकग्राउंड अलग किया जा रहा है...";
 
       const img = new Image();
       img.src = URL.createObjectURL(inp.files[0]);
       await new Promise(r => { img.onload = r; });
 
+      const w = img.width;
+      const h = img.height;
+
+      // 1. प्रोडक्ट का वाइट/लाइट बैकग्राउंड काट कर पारदर्शी बनाना
+      const cutCanvas = document.createElement('canvas');
+      cutCanvas.width = w;
+      cutCanvas.height = h;
+      const cutCtx = cutCanvas.getContext('2d');
+      cutCtx.drawImage(img, 0, 0);
+
+      const imgData = cutCtx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // अगर पिक्सल वाइट या वाइट के बेहद करीब (238+) है तो उसे ट्रांसपेरेंट कर दो
+        if (r > 238 && g > 238 && b > 238) {
+          data[i + 3] = 0;
+        }
+      }
+      cutCtx.putImageData(imgData, 0, 0);
+
+      // 2. 50 अलग-अलग सॉलिड कलर्स के साथ कैनवस पर जोड़ना
       const zip = new JSZip();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
 
-      for (let i = 0; i < COLORS.length; i++) {
-        ctx.fillStyle = COLORS[i];
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < SOLID_COLORS.length; i++) {
+        // नया सॉलिड कलर बैकग्राउंड
+        outCtx.fillStyle = SOLID_COLORS[i];
+        outCtx.fillRect(0, 0, w, h);
 
-        ctx.drawImage(img, 0, 0, img.width, img.height);
+        // पारदर्शी किया गया प्रोडक्ट ऊपर ड्रा करना (सेम साइज, बिना पैडिंग)
+        outCtx.drawImage(cutCanvas, 0, 0);
 
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+        const blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', 0.95));
         zip.file(`meesho_var_${String(i + 1).padStart(2, '0')}.jpg`, blob);
 
-        const prg = Math.round(((i + 1) / COLORS.length) * 100);
+        const prg = Math.round(((i + 1) / SOLID_COLORS.length) * 100);
         pfill.style.width = prg + '%';
-        stxt.innerText = `Generating: ${i + 1} / 50...`;
+        stxt.innerText = `कलर वेरियंट तैयार हो रहे हैं: ${i + 1} / 50...`;
       }
 
-      stxt.innerText = "ZIP file tayar ho rahi hai...";
+      stxt.innerText = "ZIP फ़ाइल तैयार हो रही है...";
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "meesho_variations.zip");
 
-      stxt.innerText = "50 Images successfully download ho gayi hain!";
+      stxt.innerText = "✅ 50 अलग-अलग कलर्स वाली फ़ोटो डाउनलोड हो चुकी हैं!";
       btn.disabled = false;
     }
   </script>
