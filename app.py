@@ -313,13 +313,13 @@ if len(processed_rows) > 0:
     )
 
 # ==========================================
-# 📸 MEESHO PRODUCT IMAGE GENERATOR (SOLID BACKGROUNDS ONLY)
+# MEESHO PRODUCT IMAGE GENERATOR (SOLID BACKGROUNDS)
 # ==========================================
 st.divider()
 st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 SOLID COLORS)")
-st.caption("पारदर्शी (Transparent PNG) या प्लेन प्रोडक्ट फ़ोटो चुनें। यह बिना किसी पैडिंग बदलाव के सीधे 50 अलग-अलग सॉलिड बैकग्राउंड कलर्स के साथ ZIP फ़ाइल तैयार कर देगा।")
+st.caption("Transparent PNG ya plain background wali product image upload karein. Ye bina kisi border padding ke background me 50 alag-alag solid colors ke sath ZIP generate karega.")
 
-components.html("""
+html_generator_code = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -344,7 +344,7 @@ components.html("""
     <center><img id="preview"></center>
     <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Image Variations (ZIP)</button>
     <div id="pbox">
-      <div id="stxt" style="font-size: 13px; color: #aaa;">प्रोसेसिंग...</div>
+      <div id="stxt" style="font-size: 13px; color: #aaa;">Processing...</div>
       <div class="pbar"><div class="pfill" id="pfill"></div></div>
     </div>
   </div>
@@ -362,3 +362,64 @@ components.html("""
       "#FFCCBC", "#D1C4E9", "#C5CAE9", "#BBDEFB", "#B3E5FC",
       "#B2EBF2", "#E1BEE7", "#F8BBD0", "#FFCDD2", "#E0E0E0"
     ];
+
+    function previewImg(e) {
+      const p = document.getElementById('preview');
+      if (e.target.files && e.target.files[0]) {
+        p.src = URL.createObjectURL(e.target.files[0]);
+        p.style.display = 'block';
+      }
+    }
+
+    async function runGenerator() {
+      const inp = document.getElementById('imgInp');
+      if (!inp.files || !inp.files[0]) {
+        alert("Pehle image select karein!");
+        return;
+      }
+      const btn = document.getElementById('genBtn');
+      const pbox = document.getElementById('pbox');
+      const pfill = document.getElementById('pfill');
+      const stxt = document.getElementById('stxt');
+
+      btn.disabled = true;
+      pbox.style.display = 'block';
+
+      const img = new Image();
+      img.src = URL.createObjectURL(inp.files[0]);
+      await new Promise(r => { img.onload = r; });
+
+      const zip = new JSZip();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      for (let i = 0; i < COLORS.length; i++) {
+        ctx.fillStyle = COLORS[i];
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+        zip.file(`meesho_var_${String(i + 1).padStart(2, '0')}.jpg`, blob);
+
+        const prg = Math.round(((i + 1) / COLORS.length) * 100);
+        pfill.style.width = prg + '%';
+        stxt.innerText = `Generating: ${i + 1} / 50...`;
+      }
+
+      stxt.innerText = "ZIP file tayar ho rahi hai...";
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "meesho_variations.zip");
+
+      stxt.innerText = "50 Images successfully download ho gayi hain!";
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>
+"""
+
+components.html(html_generator_code, height=450)
