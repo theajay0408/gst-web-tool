@@ -313,11 +313,11 @@ if len(processed_rows) > 0:
     )
 
 # ==========================================
-# MEESHO PRODUCT IMAGE GENERATOR (LIGHT & PASTEL COLORS + DYNAMIC SIZING + <50KB)
+# MEESHO PRODUCT IMAGE GENERATOR (SOLID BORDER PADDING + DYNAMIC SIZING + 30-60 KB)
 # ==========================================
 st.divider()
-st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (50 LIGHT COLORS)")
-st.caption("Product image upload karein. Ye automatic white background hata kar 50 light/aesthetic colors, alag-alag sizes aur under 50KB file size ke sath ZIP ready karega.")
+st.subheader("📸 MEESHO PRODUCT IMAGE GENERATOR (BORDER PADDING & DYNAMIC SIZE)")
+st.caption("प्रोडक्ट इमेज अपलोड करें। यह कॉर्नर्स/बॉर्डर्स पर अलग-अलग सॉलिड कलर्स की पैडिंग लगाएगा, प्रोडक्ट का साइज रैंडमली छोटा-बड़ा करेगा और फाइल साइज 30 से 60 KB के बीच रखेगा।")
 
 html_generator_code = """
 <!DOCTYPE html>
@@ -342,26 +342,26 @@ html_generator_code = """
   <div class="box">
     <input type="file" id="imgInp" accept="image/*" onchange="previewImg(event)">
     <center><img id="preview"></center>
-    <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Image Variations (Under 50 KB)</button>
+    <button id="genBtn" onclick="runGenerator()">🚀 Generate 50 Image Variations (30-60 KB)</button>
     <div id="pbox">
-      <div id="stxt" style="font-size: 13px; color: #aaa;">Processing...</div>
+      <div id="stxt" style="font-size: 13px; color: #aaa;">प्रोसेसिंग...</div>
       <div class="pbar"><div class="pfill" id="pfill"></div></div>
     </div>
   </div>
 
   <script>
-    // 50 Aesthetic, Soft, Sober and Light/Pastel Colors
-    const LIGHT_COLORS = [
-      "#F8F9FA", "#F1F3F5", "#E9ECEF", "#DEE2E6", "#F5F5DC",
-      "#FAF0E6", "#FFF8DC", "#FFFDD0", "#FDF5E6", "#F0FFF0",
-      "#E8F5E9", "#E0F2F1", "#E0F7FA", "#E1F5FE", "#E3F2FD",
-      "#EDE7F6", "#F3E5F5", "#FCE4EC", "#FFF0F5", "#FFEBEE",
-      "#FFF3E0", "#FFF8E1", "#FFFDE7", "#F9FBE7", "#F0F4C3",
-      "#EFEBE9", "#ECEFF1", "#CFD8DC", "#D7CCC8", "#FFE0B2",
-      "#FFECB3", "#FFF9C4", "#DCEDC8", "#C8E6C9", "#B2DFDB",
-      "#B2EBF2", "#B3E5FC", "#BBDEFB", "#C5CAE9", "#D1C4E9",
-      "#E1BEE7", "#F8BBD0", "#FFCDD2", "#F5EEF8", "#E8F8F5",
-      "#FEF9E7", "#EAEDED", "#EAF2F8", "#EBDEF0", "#FDEDEC"
+    // 50 अलग-अलग सॉलिड और हल्के पेस्टल शेड्स (बॉर्डर और बैकग्राउंड के लिए)
+    const BORDER_COLORS = [
+      "#E2E8F0", "#CBD5E1", "#F1F5F9", "#E0E7FF", "#C7D2FE",
+      "#EDE9FE", "#DDD6FE", "#FAE8FF", "#F5D0FE", "#FCE7F3",
+      "#FBCFE8", "#FFE4E6", "#FECDD3", "#FFEDD5", "#FED7AA",
+      "#FEF3C7", "#FDE68A", "#FEF9C3", "#FEF08A", "#ECFCCB",
+      "#D9F99D", "#DCFCE7", "#BBF7D0", "#D1FAE5", "#A7F3D0",
+      "#CCFBF1", "#99F6E4", "#E0F2FE", "#BAE6FD", "#E0F7FA",
+      "#F5F5DC", "#FAF0E6", "#FFF8DC", "#FDF5E6", "#F0FFF0",
+      "#E8F5E9", "#FFF0F5", "#FFF3E0", "#FFFDE7", "#EFEBE9",
+      "#ECEFF1", "#CFD8DC", "#D7CCC8", "#FFE0B2", "#DCEDC8",
+      "#C8E6C9", "#B2DFDB", "#B3E5FC", "#BBDEFB", "#D1C4E9"
     ];
 
     function previewImg(e) {
@@ -375,7 +375,7 @@ html_generator_code = """
     async function runGenerator() {
       const inp = document.getElementById('imgInp');
       if (!inp.files || !inp.files[0]) {
-        alert("Pehle image select karein!");
+        alert("कृपया पहले प्रोडक्ट की इमेज चुनें!");
         return;
       }
       const btn = document.getElementById('genBtn');
@@ -385,7 +385,7 @@ html_generator_code = """
 
       btn.disabled = true;
       pbox.style.display = 'block';
-      stxt.innerText = "White background remove kiya ja raha hai...";
+      stxt.innerText = "वाइट बैकग्राउंड अलग किया जा रहा है...";
 
       const img = new Image();
       img.src = URL.createObjectURL(inp.files[0]);
@@ -394,7 +394,7 @@ html_generator_code = """
       const origW = img.width;
       const origH = img.height;
 
-      // 1. Automatic White Background Keying
+      // 1. ऑटोमैटिक वाइट बैकग्राउंड रिमूवल (पारदर्शी कटआउट)
       const cutCanvas = document.createElement('canvas');
       cutCanvas.width = origW;
       cutCanvas.height = origH;
@@ -414,54 +414,62 @@ html_generator_code = """
       }
       cutCtx.putImageData(imgData, 0, 0);
 
-      // 2. Optimized 700x700 Canvas for strict <50KB size
-      const TARGET_DIM = 700;
+      // 2. 800x800 का हाई-क्वालिटी ई-कॉमर्स कैनवस
+      const CANVAS_DIM = 800;
       const outCanvas = document.createElement('canvas');
-      outCanvas.width = TARGET_DIM;
-      outCanvas.height = TARGET_DIM;
+      outCanvas.width = CANVAS_DIM;
+      outCanvas.height = CANVAS_DIM;
       const outCtx = outCanvas.getContext('2d');
 
       const zip = new JSZip();
 
-      for (let i = 0; i < LIGHT_COLORS.length; i++) {
-        // Light Pastel Background
-        outCtx.fillStyle = LIGHT_COLORS[i];
-        outCtx.fillRect(0, 0, TARGET_DIM, TARGET_DIM);
+      for (let i = 0; i < BORDER_COLORS.length; i++) {
+        // (क) बॉर्डर्स और बैकग्राउंड पर सॉलिड कलर की पैडिंग भरना
+        outCtx.fillStyle = BORDER_COLORS[i];
+        outCtx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
 
-        // Chota-Bada dynamic size scaling (60% se lekar 88% tak random size)
-        const scale = 0.60 + (Math.random() * 0.28);
-        const maxBox = TARGET_DIM * scale;
+        // (ख) प्रोडक्ट का डायनामिक साइज (किसी में 55%, किसी में 72%, किसी में 86%)
+        // इससे कॉर्नर्स पर सॉलिड पैडिंग चौड़ी/पतली दिखेगी और हर इमेज यूनिक लगेगी
+        const scale = 0.55 + (Math.random() * 0.32);
+        const maxBox = CANVAS_DIM * scale;
 
         const ratio = Math.min(maxBox / origW, maxBox / origH);
         const drawW = origW * ratio;
         const drawH = origH * ratio;
 
-        // Perfectly centered alignment
-        const drawX = (TARGET_DIM - drawW) / 2;
-        const drawY = (TARGET_DIM - drawH) / 2;
+        // प्रोडक्ट को ठीक सेंटर में अलाइन करना
+        const drawX = (CANVAS_DIM - drawW) / 2;
+        const drawY = (CANVAS_DIM - drawH) / 2;
 
         outCtx.drawImage(cutCanvas, drawX, drawY, drawW, drawH);
 
-        // Strict 50KB control: Compress loop
+        // (ग) 30 KB से 60 KB के बीच फाइल साइज कंट्रोल
         let q = 0.75;
         let blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
-        while (blob.size > 50 * 1024 && q > 0.35) {
-          q -= 0.08;
+
+        // अगर 60 KB से बड़ा हो तो क्वालिटी थोड़ी कम करो
+        while (blob.size > 58 * 1024 && q > 0.35) {
+          q -= 0.06;
+          blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
+        }
+        // अगर 30 KB से छोटा हो जाए तो क्वालिटी बढ़ाओ
+        while (blob.size < 30 * 1024 && q < 0.95) {
+          q += 0.05;
           blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
         }
 
         zip.file(`meesho_var_${String(i + 1).padStart(2, '0')}.jpg`, blob);
 
-        const prg = Math.round(((i + 1) / LIGHT_COLORS.length) * 100);
+        const prg = Math.round(((i + 1) / BORDER_COLORS.length) * 100);
         pfill.style.width = prg + '%';
-        stxt.innerText = `Generating (${(blob.size / 1024).toFixed(1)} KB): ${i + 1} / 50...`;
+        stxt.innerText = `जनरेट हो रहा है (${(blob.size / 1024).toFixed(1)} KB): ${i + 1} / 50...`;
       }
 
-      stxt.innerText = "ZIP file compress ho rahi hai...";
+      stxt.innerText = "ZIP फ़ाइल तैयार हो रही है...";
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "meesho_variations.zip");
 
-      stxt.innerText = "✅ Sabhi 50 images (<50KB) download ho gayi hain!";
+      stxt.innerText = "✅ सभी 50 फोटो (30-60 KB) तैयार होकर डाउनलोड हो चुकी हैं!";
       btn.disabled = false;
     }
   </script>
