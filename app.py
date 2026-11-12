@@ -108,7 +108,6 @@ def clean_state_info(raw_state):
         
     return STATE_MASTER.get(st_clean, ("07", "Delhi"))
 
-# 2025 से 2099 तक की सभी तारीखें (MM-YYYY) जनरेट करने के लिए फ़ंक्शन
 def get_all_periods_till_2099():
     periods = []
     for y in range(2025, 2100):
@@ -123,7 +122,6 @@ home_state_code = active_gstin[:2] if len(active_gstin) >= 2 else "07"
 
 period_list = get_all_periods_till_2099()
 
-# डिफ़ॉल्ट रूप से पिछला महीना (जैसे 10-2026) ऑटो-सिलेक्ट रखने के लिए
 now = datetime.now()
 prev_m = now.month - 1 if now.month > 1 else 12
 prev_y = now.year if now.month > 1 else now.year - 1
@@ -248,17 +246,26 @@ if len(processed_rows) > 0:
         return pd.Series([code, s_name, sp_type, ecom_id], index=['StateCode', 'StateName', 'SupplyType', 'EcommGSTIN'])
 
     mdf[['StateCode', 'StateName', 'SupplyType', 'EcommGSTIN']] = mdf.apply(map_row, axis=1)
+
+    # ग्रुप करने के बाद टैक्स कैलकुलेट करें ताकि राउंडिंग में कोई अंतर न आए
+    t7 = mdf.groupby(['SupplyType', 'StateCode', 'StateName', 'Rate'], dropna=False).agg({
+        'Net': 'sum'
+    }).reset_index()
+
+    # कोई भी नेगेटिव राज्य अब छुपाया नहीं जाएगा ताकि Table 7 और Table 14 का जोड़ 100% बराबर रहे
+    t7 = t7[t7['Net'].abs() > 0.001].copy()
+    t7['Net'] = t7['Net'].round(2)
+    t7['Tax'] = (t7['Net'] * t7['Rate'] / 100).round(2)
+    t7['IGST'] = t7.apply(lambda r: r['Tax'] if r['SupplyType'] == "INTER" else 0.0, axis=1)
+    t7['CGST'] = t7.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
+    t7['SGST'] = t7.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
+    t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
+
+    # Table 14 के लिए भी सटीक टैक्स जोड़ें
     mdf['Tax'] = (mdf['Net'] * mdf['Rate'] / 100).round(2)
     mdf['IGST'] = mdf.apply(lambda r: r['Tax'] if r['SupplyType'] == "INTER" else 0.0, axis=1)
     mdf['CGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
     mdf['SGST'] = mdf.apply(lambda r: round(r['Tax']/2, 2) if r['SupplyType'] == "INTRA" else 0.0, axis=1)
-
-    t7 = mdf.groupby(['SupplyType', 'StateCode', 'StateName', 'Rate'], dropna=False).agg({
-        'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
-    }).reset_index().round(2)
-    
-    t7 = t7[t7['Net'] > 0].copy()
-    t7['Place Of Supply'] = t7['StateCode'] + "-" + t7['StateName']
 
     t14 = mdf.groupby(['Platform', 'EcommGSTIN'], dropna=False).agg({
         'Net': 'sum', 'IGST': 'sum', 'CGST': 'sum', 'SGST': 'sum'
@@ -266,10 +273,35 @@ if len(processed_rows) > 0:
 
     st.divider()
     st.subheader("📑 7 - B2CS (OTHERS)")
-    st.dataframe(t7[['SupplyType', 'Place Of Supply', 'Rate', 'Net', 'IGST', 'CGST', 'SGST']].rename(columns={'Net': 'Taxable Value (₹)'}), use_container_width=True)
+    
+    # Table 7 के लिए डिस्प्ले डेटाफ़्रेम + नीचे TOTAL रो
+    t7_display = t7[['SupplyType', 'Place Of Supply', 'Rate', 'Net', 'IGST', 'CGST', 'SGST']].rename(
+        columns={'Net': 'Taxable Value (₹)'}
+    ).copy()
+    t7_total_row = pd.DataFrame([{
+        'SupplyType': 'TOTAL',
+        'Place Of Supply': '',
+        'Rate': None,
+        'Taxable Value (₹)': round(t7_display['Taxable Value (₹)'].sum(), 2),
+        'IGST': round(t7_display['IGST'].sum(), 2),
+        'CGST': round(t7_display['CGST'].sum(), 2),
+        'SGST': round(t7_display['SGST'].sum(), 2)
+    }])
+    t7_with_total = pd.concat([t7_display, t7_total_row], ignore_index=True)
+    st.dataframe(t7_with_total, use_container_width=True)
 
     st.subheader("🏢 14 - SUPPLIES MADE THROUGH E-COMMERCE OPERATORS U/S 52")
-    st.dataframe(t14.rename(columns={'Net': 'Net Value of Supplies (₹)'}), use_container_width=True)
+    t14_display = t14.rename(columns={'Net': 'Net Value of Supplies (₹)'}).copy()
+    t14_total_row = pd.DataFrame([{
+        'Platform': 'TOTAL',
+        'EcommGSTIN': '',
+        'Net Value of Supplies (₹)': round(t14_display['Net Value of Supplies (₹)'].sum(), 2),
+        'IGST': round(t14_display['IGST'].sum(), 2),
+        'CGST': round(t14_display['CGST'].sum(), 2),
+        'SGST': round(t14_display['SGST'].sum(), 2)
+    }])
+    t14_with_total = pd.concat([t14_display, t14_total_row], ignore_index=True)
+    st.dataframe(t14_with_total, use_container_width=True)
 
     b2cs_json_list = []
     for _, r in t7.iterrows():
@@ -369,7 +401,6 @@ html_generator_code = """
   </div>
 
   <script>
-    // 50 अलग-अलग सॉलिड और हल्के पेस्टल शेड्स (बॉर्डर और बैकग्राउंड के लिए)
     const BORDER_COLORS = [
       "#E2E8F0", "#CBD5E1", "#F1F5F9", "#E0E7FF", "#C7D2FE",
       "#EDE9FE", "#DDD6FE", "#FAE8FF", "#F5D0FE", "#FCE7F3",
@@ -413,7 +444,6 @@ html_generator_code = """
       const origW = img.width;
       const origH = img.height;
 
-      // 1. ऑटोमैटिक वाइट बैकग्राउंड रिमूवल (पारदर्शी कटआउट)
       const cutCanvas = document.createElement('canvas');
       cutCanvas.width = origW;
       cutCanvas.height = origH;
@@ -433,7 +463,6 @@ html_generator_code = """
       }
       cutCtx.putImageData(imgData, 0, 0);
 
-      // 2. 800x800 का हाई-क्वालिटी ई-कॉमर्स कैनवस
       const CANVAS_DIM = 800;
       const outCanvas = document.createElement('canvas');
       outCanvas.width = CANVAS_DIM;
@@ -443,12 +472,9 @@ html_generator_code = """
       const zip = new JSZip();
 
       for (let i = 0; i < BORDER_COLORS.length; i++) {
-        // (क) बॉर्डर्स और बैकग्राउंड पर सॉलिड कलर की पैडिंग भरना
         outCtx.fillStyle = BORDER_COLORS[i];
         outCtx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
 
-        // (ख) प्रोडक्ट का डायनामिक साइज (किसी में 55%, किसी में 72%, किसी में 86%)
-        // इससे कॉर्नर्स पर सॉलिड पैडिंग चौड़ी/पतली दिखेगी और हर इमेज यूनिक लगेगी
         const scale = 0.55 + (Math.random() * 0.32);
         const maxBox = CANVAS_DIM * scale;
 
@@ -456,22 +482,18 @@ html_generator_code = """
         const drawW = origW * ratio;
         const drawH = origH * ratio;
 
-        // प्रोडक्ट को ठीक सेंटर में अलाइन करना
         const drawX = (CANVAS_DIM - drawW) / 2;
         const drawY = (CANVAS_DIM - drawH) / 2;
 
         outCtx.drawImage(cutCanvas, drawX, drawY, drawW, drawH);
 
-        // (ग) 30 KB से 60 KB के बीच फाइल साइज कंट्रोल
         let q = 0.75;
         let blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
 
-        // अगर 60 KB से बड़ा हो तो क्वालिटी थोड़ी कम करो
         while (blob.size > 58 * 1024 && q > 0.35) {
           q -= 0.06;
           blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
         }
-        // अगर 30 KB से छोटा हो जाए तो क्वालिटी बढ़ाओ
         while (blob.size < 30 * 1024 && q < 0.95) {
           q += 0.05;
           blob = await new Promise(res => outCanvas.toBlob(res, 'image/jpeg', q));
