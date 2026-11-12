@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import io
 import re
+from datetime import datetime
 
 st.set_page_config(page_title="GST Online Seller Automation", page_icon="⚖️", layout="wide")
 
@@ -107,11 +108,27 @@ def clean_state_info(raw_state):
         
     return STATE_MASTER.get(st_clean, ("07", "Delhi"))
 
+# ऑटोमैटिक पिछले 18 महीनों की लिस्ट जनरेट करने के लिए फ़ंक्शन
+def get_dynamic_periods(months_back=18):
+    now = datetime.now()
+    periods = []
+    for i in range(months_back):
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        periods.append(f"{m:02d}-{y}")
+    return periods
+
 st.title("💼 GST Online Seller - Return Generator")
 c1, c2, c3 = st.columns([2, 1, 1])
 active_gstin = c1.text_input("ACTIVE GSTIN", value="07AIRPA0056F1ZL")
 home_state_code = active_gstin[:2] if len(active_gstin) >= 2 else "07"
-period = c2.selectbox("Period", ["08-2026", "07-2026", "09-2026", "06-2026", "05-2026"])
+
+period_list = get_dynamic_periods(18)
+# डिफ़ॉल्ट रूप से पिछला महीना (index=1) सेलेक्ट रहेगा क्योंकि रिटर्न पिछले महीने की भरी जाती है
+period = c2.selectbox("Period", period_list, index=1)
 return_type = c3.selectbox("Return", ["Monthly", "Quarterly"])
 
 fp_code = period.replace("-", "")
