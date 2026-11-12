@@ -108,17 +108,12 @@ def clean_state_info(raw_state):
         
     return STATE_MASTER.get(st_clean, ("07", "Delhi"))
 
-# ऑटोमैटिक पिछले 18 महीनों की लिस्ट जनरेट करने के लिए फ़ंक्शन
-def get_dynamic_periods(months_back=18):
-    now = datetime.now()
+# 2025 से 2099 तक की सभी तारीखें (MM-YYYY) जनरेट करने के लिए फ़ंक्शन
+def get_all_periods_till_2099():
     periods = []
-    for i in range(months_back):
-        m = now.month - i
-        y = now.year
-        while m <= 0:
-            m += 12
-            y -= 1
-        periods.append(f"{m:02d}-{y}")
+    for y in range(2025, 2100):
+        for m in range(1, 13):
+            periods.append(f"{m:02d}-{y}")
     return periods
 
 st.title("💼 GST Online Seller - Return Generator")
@@ -126,9 +121,16 @@ c1, c2, c3 = st.columns([2, 1, 1])
 active_gstin = c1.text_input("ACTIVE GSTIN", value="07AIRPA0056F1ZL")
 home_state_code = active_gstin[:2] if len(active_gstin) >= 2 else "07"
 
-period_list = get_dynamic_periods(18)
-# डिफ़ॉल्ट रूप से पिछला महीना (index=1) सेलेक्ट रहेगा क्योंकि रिटर्न पिछले महीने की भरी जाती है
-period = c2.selectbox("Period", period_list, index=1)
+period_list = get_all_periods_till_2099()
+
+# डिफ़ॉल्ट रूप से पिछला महीना (जैसे 10-2026) ऑटो-सिलेक्ट रखने के लिए
+now = datetime.now()
+prev_m = now.month - 1 if now.month > 1 else 12
+prev_y = now.year if now.month > 1 else now.year - 1
+default_period = f"{prev_m:02d}-{prev_y}"
+default_idx = period_list.index(default_period) if default_period in period_list else 0
+
+period = c2.selectbox("Period", period_list, index=default_idx)
 return_type = c3.selectbox("Return", ["Monthly", "Quarterly"])
 
 fp_code = period.replace("-", "")
